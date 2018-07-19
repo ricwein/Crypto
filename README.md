@@ -77,6 +77,14 @@ try {
 
 ## Asymmetric Crypto
 
+Asymmetric Crypto uses keypairs out of a public and a private key to encrypt and signate messages.
+
+**sending:** Usually a Message is encrypted with the public-key of the receiver, and signated with the private-key of the sender.
+
+**receiving:** The receiver is than able to verify the message-signature ((H)MAC) with the public-key of the sender and can decrypt it with it's own private-key.
+
+> The following example uses two keypairs (alice and bob) with known private-keys in the same code-scope. This is just done for comprehensibility. In real-world cases on side only knowns it's own private-key (public is not required) and the public-key of the other participant.
+
 ### encrypt
 
 ```php
