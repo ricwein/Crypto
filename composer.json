@@ -1,0 +1,37 @@
+{
+    "name": "ricwein/crypto",
+    "description": "libsodium based cryptography library",
+    "type": "library",
+    "license": "MIT",
+    "authors": [{
+        "name": "Richard Weinhold",
+        "email": "git@ricwein.com"
+    }],
+    "require": {
+        "php": ">= 7.2.0",
+        "ext-mbstring": "*",
+        "ext-sodium": "*",
+        "paragonie/constant_time_encoding": "^2"
+    },
+    "require-dev": {
+        "overtrue/phplint": "^1.1",
+        "phpunit/phpunit": "^7.1"
+    },
+    "config": {
+        "platform": {"php": "7.2"},
+        "sort-packages": true
+    },
+    "scripts": {
+        "test": "./vendor/bin/phpunit"
+    },
+    "autoload": {
+        "psr-4": {
+            "ricwein\\Crypto\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "ricwein\\Crypto\\Tests\\": "tests"
+        }
+    }
+}
