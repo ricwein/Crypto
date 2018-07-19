@@ -186,7 +186,7 @@ class Ciphertext
         if ($this->mac === null) {
 
             // calculate Message Authentication Code
-            $this->mac = $this->_calcMac();
+            $this->mac = $this->calcMac();
         }
 
         return Encoding::encode($this->mac, $encoding);
@@ -198,14 +198,14 @@ class Ciphertext
      */
     public function isValidMac(?string $mac = null): bool
     {
-        return hash_equals($mac ?? $this->getMac(Encoding::RAW), $this->_calcMac());
+        return hash_equals($mac ?? $this->getMac(Encoding::RAW), $this->calcMac());
     }
 
     /**
      * @return string raw-binary
      * @throws UnexpectedValueException
      */
-    protected function _calcMac(): string
+    protected function calcMac(): string
     {
         if ($this->authKey === null) {
             throw new UnexpectedValueException('Exceptect a valid authentication-key but none given', 400);

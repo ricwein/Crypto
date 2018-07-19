@@ -5,7 +5,6 @@ namespace ricwein\Crypto\Tests\Symmetric;
 use PHPUnit\Framework\TestCase;
 use ricwein\Crypto\Encoding;
 use ricwein\Crypto\Ciphertext;
-
 use ricwein\Crypto\Symmetric\Key;
 use ricwein\Crypto\Symmetric\Crypto;
 

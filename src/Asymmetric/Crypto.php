@@ -18,7 +18,6 @@ class Crypto extends CryptoBase
      */
     public function encrypt(string $plaintext, $pubKey = null): Ciphertext
     {
-
         // derive ephemeral public-private encryption keypair
         $encKeyPair = $this->deriveKeyPair($pubKey);
 
@@ -34,7 +33,6 @@ class Crypto extends CryptoBase
      */
     public function decrypt(Ciphertext $ciphertext, $pubKey = null): string
     {
-
         // derive ephemeral public-private encryption keypair
         $encKeyPair = $this->deriveKeyPair($pubKey);
 

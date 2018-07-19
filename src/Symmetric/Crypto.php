@@ -33,6 +33,7 @@ class Crypto extends CryptoBase
              * @see https://download.libsodium.org/doc/advanced/xsalsa20.html
              */
             $encrypted = \sodium_crypto_stream_xor($plaintext, $nonce, $encKey);
+            \sodium_memzero($plaintext);
             \sodium_memzero($encKey);
 
             $ciphertext = new Ciphertext($encrypted, $salt, $nonce);
@@ -70,12 +71,13 @@ class Crypto extends CryptoBase
 
         // decrypt actual ciphertext
         $plaintext = \sodium_crypto_stream_xor($ciphertext->getEncrypted(), $ciphertext->getNonce(), $encKey);
-        if (!\is_string($plaintext)) {
-            throw new MacMismatchException('Invalid message authentication code', 400);
-        }
 
         \sodium_memzero($encKey);
         unset($ciphertext);
+
+        if (!\is_string($plaintext)) {
+            throw new MacMismatchException('Invalid message authentication code', 400);
+        }
 
         return $plaintext;
     }

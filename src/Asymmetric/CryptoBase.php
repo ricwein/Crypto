@@ -75,7 +75,7 @@ abstract class CryptoBase
         // load public key
         if ($pubKey === null) {
 
-            // use internal pubblic-key
+            // use internal public-key
             if ($this->keypair->getKey(KeyPair::PUB_KEY) === null) {
                 $this->keypair->derivePublicKey();
             }

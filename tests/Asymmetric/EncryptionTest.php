@@ -16,7 +16,7 @@ class EncryptionTest extends TestCase
     /**
      * @return string
      */
-    protected function _getMessage(): string
+    protected function getMessage(): string
     {
         return base64_encode(random_bytes(random_int(2 << 9, 2 << 10)));
     }
@@ -30,14 +30,14 @@ class EncryptionTest extends TestCase
         $key = (new Crypto((new KeyPair())->keygen()));
 
         // encoded ciphertext
-        $message = $this->_getMessage();
+        $message = $this->getMessage();
         $ciphertext = $key->encrypt($message)->getString();
         $plaintext = $key->decrypt(Ciphertext::fromString($ciphertext));
 
         $this->assertSame($message, $plaintext);
 
         // raw binary ciphertext
-        $message = $this->_getMessage();
+        $message = $this->getMessage();
         $ciphertext = $key->encrypt($message)->getString(Encoding::RAW);
         $plaintext = $key->decrypt(Ciphertext::fromString($ciphertext, Encoding::RAW));
 
@@ -57,28 +57,28 @@ class EncryptionTest extends TestCase
         $serverCrypto = new Crypto($serverKey);
 
         // request from client to server
-        $message = $this->_getMessage();
+        $message = $this->getMessage();
         $ciphertext = $clientCrypto->encrypt($message, $serverKey)->getString();
         $plaintext = $serverCrypto->decrypt(Ciphertext::fromString($ciphertext), $clientKey);
 
         $this->assertSame($message, $plaintext);
 
         // response from server to client
-        $message = $this->_getMessage();
+        $message = $this->getMessage();
         $ciphertext = $serverCrypto->encrypt($message, $clientKey)->getString();
         $plaintext = $clientCrypto->decrypt(Ciphertext::fromString($ciphertext), $serverKey);
 
         $this->assertSame($message, $plaintext);
 
         // request from client to server
-        $message = $this->_getMessage();
+        $message = $this->getMessage();
         $ciphertext = $clientCrypto->encrypt($message, $serverKey)->getString(Encoding::RAW);
         $plaintext = $serverCrypto->decrypt(Ciphertext::fromString($ciphertext, Encoding::RAW), $clientKey);
 
         $this->assertSame($message, $plaintext);
 
         // response from server to client
-        $message = $this->_getMessage();
+        $message = $this->getMessage();
         $ciphertext = $serverCrypto->encrypt($message, $clientKey)->getString(Encoding::RAW);
         $plaintext = $clientCrypto->decrypt(Ciphertext::fromString($ciphertext, Encoding::RAW), $serverKey);
 
@@ -103,7 +103,7 @@ class EncryptionTest extends TestCase
 
         // simulate MITM
         // Eve (send message) => Alice (awaits) from Bob
-        $message = $this->_getMessage();
+        $message = $this->getMessage();
         $ciphertext = $cryptoEve->encrypt($message, $keyAlice->getKey(KeyPair::PUB_KEY))->getString();
         $plaintext = $cryptoAlice->decrypt(Ciphertext::fromString($ciphertext), $keyBob);
 
@@ -128,7 +128,7 @@ class EncryptionTest extends TestCase
 
         // simulate MITM
         // Alice (send message) => Bob, Eve intercepts
-        $message = $this->_getMessage();
+        $message = $this->getMessage();
         $ciphertext = $cryptoAlice->encrypt($message, $keyBob->getKey(KeyPair::PUB_KEY))->getString();
         $plaintext = $cryptoEve->decrypt(Ciphertext::fromString($ciphertext), $keyAlice);
 
@@ -145,7 +145,7 @@ class EncryptionTest extends TestCase
         $cryptoA = new Crypto($keyA);
 
         // encoded ciphertext
-        $message = $this->_getMessage();
+        $message = $this->getMessage();
         $ciphertext = $cryptoA->encrypt($message)->getString();
         $plaintext = $cryptoA->decrypt(Ciphertext::fromString($ciphertext));
 
