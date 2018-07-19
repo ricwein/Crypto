@@ -116,6 +116,7 @@ try {
 ### decrypt
 
 ```php
+use ricwein\Crypto\Ciphertext;
 use ricwein\Crypto\Encoding;
 use ricwein\Crypto\Asymmetric\Crypto;
 use ricwein\Crypto\Asymmetric\KeyPair;
@@ -123,8 +124,12 @@ use ricwein\Crypto\Exceptions\Exception;
 use ricwein\Crypto\Exceptions\MacMismatchException;
 
 try {
-    $keyAlice = new KeyPair([KeyPair::PRIV_KEY => file_get_contents(__DIR__ . '/alice.key')], Encoding::RAW);
-    $keyBob = new KeyPair([KeyPair::PRIV_KEY => file_get_contents(__DIR__ . '/bob.key')], Encoding::RAW);
+    $keyAlice = new KeyPair([
+        KeyPair::PRIV_KEY => file_get_contents(__DIR__ . '/alice.key')
+    ], Encoding::RAW);
+    $keyBob = new KeyPair([
+        KeyPair::PRIV_KEY => file_get_contents(__DIR__ . '/bob.key')
+    ], Encoding::RAW);
     $ciphertext = Ciphertext::fromString(file_get_contents(__DIR__ . '/message'), Encoding::BASE64URL);
 
     // verfiy and decrypt the ciphertext
