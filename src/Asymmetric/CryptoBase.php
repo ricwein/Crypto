@@ -61,7 +61,7 @@ abstract class CryptoBase
      * @return KeyPair
      * @throws UnexpectedValueException|InvalidArgumentException
      */
-    protected function deriveKeyPair($pubKey = null): KeyPair
+    public function deriveKeyPair($pubKey = null): KeyPair
     {
         if ($this->keypair === null) {
             throw new UnexpectedValueException('asymmetric authentication crypto requires a keypair, but none given', 500);
