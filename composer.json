@@ -15,7 +15,11 @@
     },
     "require-dev": {
         "overtrue/phplint": "^1.1",
-        "phpunit/phpunit": "^7.1"
+        "phpunit/phpunit": "^7.1",
+        "ricwein/filesystem": "^1.0"
+    },
+    "suggest": {
+        "ricwein/filesystem": "Support for file-based cryptography"
     },
     "config": {
         "platform": {"php": "7.2"},

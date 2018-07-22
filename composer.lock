@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "fa2dc51d46437391e61efeaa316e1c40",
+    "content-hash": "e4d1c72f9bacfbda4d73440c43cb7709",
     "packages": [
         {
             "name": "paragonie/constant_time_encoding",
@@ -874,6 +874,50 @@
                 "xunit"
             ],
             "time": "2018-07-15T05:20:50+00:00"
+        },
+        {
+            "name": "ricwein/filesystem",
+            "version": "1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/ricwein/FileSystem.git",
+                "reference": "d53ef1c98d5491637c21d60d9e41b26070a892c3"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/ricwein/FileSystem/zipball/d53ef1c98d5491637c21d60d9e41b26070a892c3",
+                "reference": "d53ef1c98d5491637c21d60d9e41b26070a892c3",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">= 7.2.0"
+            },
+            "require-dev": {
+                "league/flysystem": "^1.0",
+                "overtrue/phplint": "^1.1",
+                "phpunit/phpunit": "^7.1"
+            },
+            "suggest": {
+                "league/flysystem": "Support for more filesystems"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "ricwein\\FileSystem\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Richard Weinhold",
+                    "email": "git@ricwein.com"
+                }
+            ],
+            "description": "Filesystem abstraction layer",
+            "time": "2018-07-19T11:24:26+00:00"
         },
         {
             "name": "sebastian/code-unit-reverse-lookup",

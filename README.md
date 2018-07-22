@@ -4,10 +4,10 @@ This library wrapps the PHP 7 libsodium cryptographic functions into a object-or
 
 This library supports:
 
--   symmetric authenticated en/decryption
--   asymmetric authenticated en/decryption
+-   symmetric and asymmetric authenticated en/decryption of messages and files
 -   cryptographic secure key/keypair generation
--   Diffie Hellman key-derivation for keypairs for keyexchanges
+-   Diffie Hellman key-exchange for keypairs
+-   ex/import of keys and ciphertexts with support for most common encodings
 
 ## Installation
 
@@ -24,7 +24,6 @@ Symmetric cryptography uses a secret (key) to encrypt a given message to a ciphe
 ### encrypt
 
 ```php
-use ricwein\Crypto\Encoding;
 use ricwein\Crypto\Symmetric\Crypto;
 use ricwein\Crypto\Symmetric\Key;
 use ricwein\Crypto\Exceptions\Exception;
@@ -37,8 +36,8 @@ try {
     $ciphertext = (new Crypto($key))->encrypt($message);
 
     // now we can use the resulting key and ciphertext, e.g. safe them to the filesystem
-    file_put_contents(__DIR__ . '/key', $key->getKey(Encoding::RAW));
-    file_put_contents(__DIR__ . '/message', $ciphertext->getString(Encoding::HEX));
+    file_put_contents(__DIR__ . '/key', $key->getKey());
+    file_put_contents(__DIR__ . '/message', $ciphertext->getString());
 
 } catch (Exception $e) {
 
@@ -51,15 +50,14 @@ try {
 
 ```php
 use ricwein\Crypto\Ciphertext;
-use ricwein\Crypto\Encoding;
 use ricwein\Crypto\Symmetric\Crypto;
 use ricwein\Crypto\Symmetric\Key;
 use ricwein\Crypto\Exceptions\Exception;
 use ricwein\Crypto\Exceptions\MacMismatchException;
 
 try {
-    $ciphertext = Ciphertext::fromString(file_get_contents(__DIR__ . '/message'), Encoding::HEX);
-    $key = new Key(file_get_contents(__DIR__ . '/key'), Encoding::RAW);
+    $ciphertext = Ciphertext::fromString(file_get_contents(__DIR__ . '/message'));
+    $key = new Key(file_get_contents(__DIR__ . '/key'));
 
     // actual decryption
     $plaintext = (new Crypto($key))->decrypt($ciphertext);
@@ -77,9 +75,9 @@ try {
 
 ## Asymmetric Crypto
 
-Asymmetric Crypto uses keypairs out of a public and a private key to encrypt and signate messages.
+Asymmetric Crypto uses keypairs out of a public and a private key to encrypt and sign messages.
 
-**sending:** Usually a Message is encrypted with the public-key of the receiver, and signated with the private-key of the sender.
+**sending:** Usually a Message is encrypted with the public-key of the receiver, and signed with the private-key of the sender.
 
 **receiving:** The receiver is than able to verify the message-signature ((H)MAC) with the public-key of the sender and can decrypt it with it's own private-key.
 
@@ -88,7 +86,6 @@ Asymmetric Crypto uses keypairs out of a public and a private key to encrypt and
 ### encrypt
 
 ```php
-use ricwein\Crypto\Encoding;
 use ricwein\Crypto\Asymmetric\Crypto;
 use ricwein\Crypto\Asymmetric\KeyPair;
 use ricwein\Crypto\Exceptions\Exception;
@@ -102,9 +99,9 @@ try {
     $ciphertext = (new Crypto($keyAlice))->encrypt($message, $keyBob->getKey(KeyPair::PUB_KEY));
 
     // it's enough to store the private-keys of our keypairs, public-keys can be derived later if required
-    file_put_contents(__DIR__ . '/alice.key', $keyAlice->getKey(KeyPair::PRIV_KEY, Encoding::RAW));
-    file_put_contents(__DIR__ . '/bob.key', $keyBob->getKey(KeyPair::PRIV_KEY, Encoding::RAW));
-    file_put_contents(__DIR__ . '/message', $ciphertext->getString(Encoding::BASE64URL));
+    file_put_contents(__DIR__ . '/alice.key', $keyAlice->getKey(KeyPair::PRIV_KEY));
+    file_put_contents(__DIR__ . '/bob.key', $keyBob->getKey(KeyPair::PRIV_KEY));
+    file_put_contents(__DIR__ . '/message', $ciphertext->getString());
 
 } catch (Exception $e) {
 
@@ -117,7 +114,6 @@ try {
 
 ```php
 use ricwein\Crypto\Ciphertext;
-use ricwein\Crypto\Encoding;
 use ricwein\Crypto\Asymmetric\Crypto;
 use ricwein\Crypto\Asymmetric\KeyPair;
 use ricwein\Crypto\Exceptions\Exception;
@@ -126,11 +122,11 @@ use ricwein\Crypto\Exceptions\MacMismatchException;
 try {
     $keyAlice = new KeyPair([
         KeyPair::PRIV_KEY => file_get_contents(__DIR__ . '/alice.key')
-    ], Encoding::RAW);
+    ]);
     $keyBob = new KeyPair([
         KeyPair::PRIV_KEY => file_get_contents(__DIR__ . '/bob.key')
-    ], Encoding::RAW);
-    $ciphertext = Ciphertext::fromString(file_get_contents(__DIR__ . '/message'), Encoding::BASE64URL);
+    ]);
+    $ciphertext = Ciphertext::fromString(file_get_contents(__DIR__ . '/message'));
 
     // verfiy and decrypt the ciphertext
     // it's enough to pass alice keypair with only a private key here,
@@ -148,3 +144,9 @@ try {
 
 }
 ```
+
+## Encoding
+
+## File-Crypto
+
+`ricwein/filesystem`
