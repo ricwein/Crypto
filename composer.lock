@@ -877,16 +877,16 @@
         },
         {
             "name": "ricwein/filesystem",
-            "version": "1.0",
+            "version": "1.0.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/ricwein/FileSystem.git",
-                "reference": "d53ef1c98d5491637c21d60d9e41b26070a892c3"
+                "reference": "2ad56d51ceae4de999c50069c4f0d1543ef894a3"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/ricwein/FileSystem/zipball/d53ef1c98d5491637c21d60d9e41b26070a892c3",
-                "reference": "d53ef1c98d5491637c21d60d9e41b26070a892c3",
+                "url": "https://api.github.com/repos/ricwein/FileSystem/zipball/2ad56d51ceae4de999c50069c4f0d1543ef894a3",
+                "reference": "2ad56d51ceae4de999c50069c4f0d1543ef894a3",
                 "shasum": ""
             },
             "require": {
@@ -917,7 +917,7 @@
                 }
             ],
             "description": "Filesystem abstraction layer",
-            "time": "2018-07-19T11:24:26+00:00"
+            "time": "2018-07-26T11:33:40+00:00"
         },
         {
             "name": "sebastian/code-unit-reverse-lookup",
@@ -1484,16 +1484,16 @@
         },
         {
             "name": "symfony/console",
-            "version": "v4.1.1",
+            "version": "v4.1.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/console.git",
-                "reference": "70591cda56b4b47c55776ac78e157c4bb6c8b43f"
+                "reference": "5c31f6a97c1c240707f6d786e7e59bfacdbc0219"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/console/zipball/70591cda56b4b47c55776ac78e157c4bb6c8b43f",
-                "reference": "70591cda56b4b47c55776ac78e157c4bb6c8b43f",
+                "url": "https://api.github.com/repos/symfony/console/zipball/5c31f6a97c1c240707f6d786e7e59bfacdbc0219",
+                "reference": "5c31f6a97c1c240707f6d786e7e59bfacdbc0219",
                 "shasum": ""
             },
             "require": {
@@ -1548,11 +1548,11 @@
             ],
             "description": "Symfony Console Component",
             "homepage": "https://symfony.com",
-            "time": "2018-05-31T10:17:53+00:00"
+            "time": "2018-07-16T14:05:40+00:00"
         },
         {
             "name": "symfony/finder",
-            "version": "v4.1.1",
+            "version": "v4.1.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/finder.git",
@@ -1715,7 +1715,7 @@
         },
         {
             "name": "symfony/process",
-            "version": "v4.1.1",
+            "version": "v4.1.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/process.git",
@@ -1764,7 +1764,7 @@
         },
         {
             "name": "symfony/yaml",
-            "version": "v4.1.1",
+            "version": "v4.1.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/yaml.git",

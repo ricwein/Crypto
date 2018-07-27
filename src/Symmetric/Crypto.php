@@ -4,15 +4,27 @@
  */
 namespace ricwein\Crypto\Symmetric;
 
+use ricwein\Crypto\Helper;
 use ricwein\Crypto\Ciphertext;
 use ricwein\Crypto\Exceptions\KeyMismatchException;
 use ricwein\Crypto\Exceptions\MacMismatchException;
+use ricwein\FileSystem\File;
+use ricwein\FileSystem\Storage;
+use ricwein\FileSystem\Helper\Hash;
+use ricwein\FileSystem\Exceptions\UnsupportedException;
+use ricwein\FileSystem\Exceptions\AccessDeniedException;
+use ricwein\FileSystem\Storage\Extensions\Binary;
 
 /**
  * asymmetric Crypto using libsodium
  */
 class Crypto extends CryptoBase
 {
+
+    /**
+     * @var int
+     */
+    const FILE_BUFFER = 1048576; // == 1024^2 == 2^20
 
     /**
     * @inheritDoc
@@ -80,5 +92,288 @@ class Crypto extends CryptoBase
         }
 
         return $plaintext;
+    }
+
+    /**
+     * @param  Storage           $source source-storage
+     * @param  File|Storage|null $destination given destination
+     * @return File
+     * @throws UnsupportedException|AccessDeniedException
+     */
+    protected function prepareDestination(Storage $source, $destination = null): File
+    {
+        // en/decryping the current file requires a temp-destination,
+        // which is later used to overwrite our original source
+        if ($destination === null && $source->storage() instanceof Storage\Disk) {
+            $destination = new File(new Storage\Disk\Temp());
+        } elseif ($destination === null && $source->storage() instanceof Storage\Memory) {
+            $destination = new File(new Storage\Memory());
+        } elseif ($destination instanceof Storage) {
+            $destination = new File($destination);
+        }
+
+        if (!$destination instanceof File) {
+            throw new UnsupportedException(sprintf('unable to use file-base cryptography for the given destination-storage \'%s\'', get_class($destination)), 400);
+        } elseif (!$destination->isWriteable()) {
+            throw new AccessDeniedException('unable to write to destination', 500);
+        }
+
+        return $destination;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function encryptFile(File $source, $destination = null): File
+    {
+        $encryptSelf = ($destination === null);
+        $destination = $this->prepareDestination($source->storage(), $destination);
+
+        // run actual stream-encryption
+        $this->streamEncryptFile($source, $destination);
+
+        // replace the source-file with the encrypted one
+        if ($encryptSelf && $source->storage() instanceof Storage\Disk) {
+            return $destination->moveTo($source->storage());
+        }
+
+        return $destination;
+    }
+
+    /**
+     * @param  File $source
+     * @param  File $destination
+     * @return int bytes written
+     * @throws MacMismatchException
+     */
+    protected function streamEncryptFile(File $source, File $destination): int
+    {
+        // generate (first) nonce and HKDF salt
+        $nonce = \random_bytes(\SODIUM_CRYPTO_STREAM_NONCEBYTES);
+        $salt = \random_bytes(\SODIUM_CRYPTO_STREAM_KEYBYTES);
+
+        // split our key into authentication and encryption keys
+        list($encKey, $authKey) = $this->key->hkdfSplit($salt);
+
+        // fetch initial stats from source-file
+        $initHash = $source->getHash(Hash::CONTENT, 'sha256');
+        $size = $source->getSize();
+        $written = 0;
+        $readBytes = 0;
+
+        // open locking file-handles
+        $sourceHandle = $source->getHandle(Binary::MODE_READ);
+        $destinationHandle = $destination->getHandle(Binary::MODE_WRITE);
+
+        // write file-header
+        $destinationHandle->write($nonce, \SODIUM_CRYPTO_STREAM_NONCEBYTES);
+        $destinationHandle->write($salt, \SODIUM_CRYPTO_STREAM_KEYBYTES);
+
+        // calculate initial mac
+        $mac = \sodium_crypto_generichash_init($authKey);
+        \sodium_crypto_generichash_update($mac, $nonce);
+        \sodium_crypto_generichash_update($mac, $salt);
+
+        \sodium_memzero($authKey);
+        \sodium_memzero($salt);
+
+        // begin the streaming encryption
+        while ($sourceHandle->remainingBytes() > 0) {
+
+            // prevent overflow
+            if (($sourceHandle->getPos() + self::FILE_BUFFER) > $size) {
+                $readBytes = $size - $sourceHandle->getPos();
+            } else {
+                $readBytes = self::FILE_BUFFER;
+            }
+
+            $read = $sourceHandle->read($readBytes);
+            $encrypted = \sodium_crypto_stream_xor($read, $nonce, $encKey);
+
+            \sodium_crypto_generichash_update($mac, $encrypted);
+            $written += $destinationHandle->write($encrypted);
+
+            \sodium_increment($nonce);
+        }
+
+        \sodium_memzero($encKey);
+        \sodium_memzero($nonce);
+
+        // Check that our input file was not modified before we MAC it
+        if (!\hash_equals($source->getHash(Hash::CONTENT, 'sha256'), $initHash)) {
+            throw new MacMismatchException('read-only file has been modified since it was opened for reading', 500);
+        }
+
+        // finish encryption
+        $written += $destinationHandle->write(
+            \sodium_crypto_generichash_final($mac, \SODIUM_CRYPTO_GENERICHASH_KEYBYTES),
+            \SODIUM_CRYPTO_GENERICHASH_KEYBYTES
+        );
+
+        // free handles
+        $sourceHandle = null;
+        $destinationHandle = null;
+
+        return $written;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function decryptFile(File $source, $destination = null): File
+    {
+        $encryptSelf = ($destination === null);
+        $destination = $this->prepareDestination($source->storage(), $destination);
+
+        // run actual stream-encryption
+        $this->streamDecryptFile($source, $destination);
+
+        // replace the source-file with the encrypted one
+        if ($encryptSelf && $source->storage() instanceof Storage\Disk) {
+            return $destination->moveTo($source->storage());
+        }
+
+        return $destination;
+    }
+
+    /**
+     * @param  File $source
+     * @param  File $destination
+     * @return int bytes written
+     * @throws MacMismatchException
+     */
+    protected function streamDecryptFile(File $source, File $destination): int
+    {
+        // fetch initial stats from source-file
+        $cipherEnd = $source->getSize() - \SODIUM_CRYPTO_GENERICHASH_KEYBYTES;
+        $received = 0;
+
+        // open locking file-handles
+        $sourceHandle = $source->getHandle(Binary::MODE_READ);
+        $destinationHandle = $destination->getHandle(Binary::MODE_WRITE);
+
+        $sourceHandle->reset();
+
+        // read file-header from encrypted file
+        $nonce = $sourceHandle->read(\SODIUM_CRYPTO_STREAM_NONCEBYTES);
+        $salt = $sourceHandle->read(\SODIUM_CRYPTO_STREAM_KEYBYTES);
+
+        // split our key into authentication and encryption keys
+        list($encKey, $authKey) = $this->key->hkdfSplit($salt);
+
+        $mac = \sodium_crypto_generichash_init($authKey);
+        \sodium_crypto_generichash_update($mac, $nonce);
+        \sodium_crypto_generichash_update($mac, $salt);
+
+        // verify stream-mac
+        $chunkMacs = self::verifyStreamMac($sourceHandle, $mac);
+
+        \sodium_memzero($authKey);
+        \sodium_memzero($salt);
+
+        // decrypt stream
+        while ($sourceHandle->remainingBytes() > \SODIUM_CRYPTO_GENERICHASH_KEYBYTES) {
+
+            // prevent overflow
+            if (($sourceHandle->getPos() + self::FILE_BUFFER) > $cipherEnd) {
+                $readBytes = $cipherEnd - $sourceHandle->getPos();
+            } else {
+                $readBytes = self::FILE_BUFFER;
+            }
+
+            $read = $sourceHandle->read($readBytes);
+
+            \sodium_crypto_generichash_update($mac, $read);
+            $calcMAC = Helper::safeStrcpy($mac);
+            $calc = \sodium_crypto_generichash_final($calcMAC, \SODIUM_CRYPTO_GENERICHASH_KEYBYTES);
+
+            // someone attempted to add a chunk at the end.
+            if (empty($chunkMacs)) {
+                throw new MacMismatchException('Invalid message authentication code', 400);
+            }
+
+            // this chunk was altered after the original MAC was verified
+            $chunkMAC = \array_shift($chunkMacs);
+            if (!\hash_equals($chunkMAC, $calc)) {
+                throw new MacMismatchException('Invalid message authentication code', 400);
+            }
+
+            // this is where the decryption actually occurs
+            $decrypted = \sodium_crypto_stream_xor($read, $nonce, $encKey);
+            $received += $destinationHandle->write($decrypted);
+
+            \sodium_memzero($decrypted);
+            \sodium_increment($nonce);
+        }
+
+        \sodium_memzero($encKey);
+        \sodium_memzero($nonce);
+
+        // free handles
+        $sourceHandle = null;
+        $destinationHandle = null;
+
+        \sodium_memzero($mac);
+        unset($chunkMacs);
+
+        return $received;
+    }
+
+
+    /**
+     * read chunk-macs from stream
+     * @param  Binary $sourceHandle
+     * @param  string $mac
+     * @return array
+     * @throws MacMismatchException
+     */
+    final private function verifyStreamMac(Binary $sourceHandle, string $mac): array
+    {
+        $start = $sourceHandle->getPos();
+
+        // fetch hmac
+        $cipherEnd = $sourceHandle->getSize() - \SODIUM_CRYPTO_GENERICHASH_KEYBYTES;
+        $sourceHandle->reset($cipherEnd);
+        $storedMac = $sourceHandle->read(\SODIUM_CRYPTO_GENERICHASH_KEYBYTES);
+        $sourceHandle->reset($start);
+
+        $chunkMACs = [];
+
+        $break = false;
+
+        while (!$break && $sourceHandle->getPos() < $cipherEnd) {
+
+            // Would a full file-buffer read put it past the end of the
+            // ciphertext? If so, only return a portion of the file
+            if (($sourceHandle->getPos() + self::FILE_BUFFER) >= $cipherEnd) {
+                $break = true;
+                $read  = $sourceHandle->read($cipherEnd - $sourceHandle->getPos());
+            } else {
+                $read = $sourceHandle->read(self::FILE_BUFFER);
+            }
+
+            // We're updating our HMAC and nothing else
+            \sodium_crypto_generichash_update($mac, $read);
+
+            // Copy the hash state then store the MAC of this chunk
+            /** @var string $chunkMAC */
+            $chunkMAC    = Helper::safeStrcpy($mac);
+            $chunkMACs[] = \sodium_crypto_generichash_final($chunkMAC, \SODIUM_CRYPTO_GENERICHASH_KEYBYTES);
+        }
+
+        /**
+         * We should now have enough data to generate an identical MAC
+         */
+        $finalHMAC = \sodium_crypto_generichash_final($mac, \SODIUM_CRYPTO_GENERICHASH_KEYBYTES);
+
+        /**
+         * Use hash_equals() to be timing-invariant
+         */
+        if (!\hash_equals($finalHMAC, $storedMac)) {
+            throw new MacMismatchException('Invalid message authentication code', 400);
+        }
+
+        $sourceHandle->reset($start);
+        return $chunkMACs;
     }
 }

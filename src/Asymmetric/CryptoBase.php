@@ -7,6 +7,8 @@ namespace ricwein\Crypto\Asymmetric;
 use ricwein\Crypto\Ciphertext;
 use ricwein\Crypto\Exceptions\InvalidArgumentException;
 use ricwein\Crypto\Exceptions\UnexpectedValueException;
+use ricwein\FileSystem\File;
+use ricwein\FileSystem\Storage;
 
 /**
  * crypto-base for asymmetric keypair handling
@@ -115,4 +117,23 @@ abstract class CryptoBase
      * @return string
      */
     abstract public function decrypt(Ciphertext $ciphertext, $pubKey = null): string;
+
+
+    /**
+     * asymmetric File encryption using libsodium
+     * @param  File                $source
+     * @param  Storage|File|null   $destination
+     * @param  string|KeyPair|null $pubKey
+     * @return File
+     */
+    abstract public function encryptFile(File $source, $destination = null, $pubKey = null): File;
+
+    /**
+     * asymmetric File decryption using libsodium
+     * @param  File                $source
+     * @param  Storage|File|null   $destination
+     * @param  string|KeyPair|null $pubKey
+     * @return File
+     */
+    abstract public function decryptFile(File $source, $destination = null, $pubKey = null): File;
 }

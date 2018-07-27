@@ -7,6 +7,8 @@ namespace ricwein\Crypto\Symmetric;
 use ricwein\Crypto\Ciphertext;
 use ricwein\Crypto\Exceptions\KeyMismatchException;
 use ricwein\Crypto\Exceptions\MacMismatchException;
+use ricwein\FileSystem\File;
+use ricwein\FileSystem\Storage;
 
 /**
  * crypto-base for symmetric key handling
@@ -70,4 +72,20 @@ abstract class CryptoBase
      * @return string
      */
     abstract public function decrypt(Ciphertext $ciphertext): string;
+
+    /**
+     * symmetric File encryption using libsodium
+     * @param  File              $source
+     * @param  Storage|File|null $destination
+     * @return File
+     */
+    abstract public function encryptFile(File $source, $destination = null): File;
+
+    /**
+     * symmetric File decryption using libsodium
+     * @param  File              $source
+     * @param  Storage|File|null $destination
+     * @return File
+     */
+    abstract public function decryptFile(File $source, $destination = null): File;
 }
