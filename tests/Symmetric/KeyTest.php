@@ -16,7 +16,7 @@ class KeyTest extends TestCase
      */
     public function testKeyGeneration()
     {
-        $key = new Key();
+        $key = new Key;
         $this->assertNull($key->getKey());
 
         $key->keygen();
@@ -28,7 +28,7 @@ class KeyTest extends TestCase
      */
     public function testKeyLoading()
     {
-        $keyA = (new Key())->keygen();
+        $keyA = (new Key)->keygen();
 
         $keyB = new Key($keyA->getKey());
         $keyC = new Key($keyA->getKey(Encoding::BASE64URLSAFE), Encoding::BASE64URLSAFE);
@@ -41,7 +41,7 @@ class KeyTest extends TestCase
      */
     public function testFingerprinting()
     {
-        $keyA = (new Key())->keygen();
+        $keyA = (new Key)->keygen();
 
         $keyB = new Key($keyA->getKey());
         $keyC = new Key($keyA->getKey(Encoding::BASE64URLSAFE), Encoding::BASE64URLSAFE);
@@ -54,10 +54,10 @@ class KeyTest extends TestCase
      */
     public function testHKDFSplitting()
     {
-        $keyA = (new Key())->keygen();
+        $keyA = (new Key)->keygen();
         list($encKeyA, $authKeyA) = $keyA->hkdfSplit();
 
-        $keyB = (new Key())->load($keyA->getKey());
+        $keyB = (new Key)->load($keyA->getKey());
         list($encKeyB, $authKeyB) = $keyA->hkdfSplit();
 
         $this->assertSame($encKeyA, $encKeyB);
@@ -71,13 +71,27 @@ class KeyTest extends TestCase
     {
         $salt = random_bytes(\SODIUM_CRYPTO_GENERICHASH_KEYBYTES);
 
-        $keyA = (new Key())->keygen();
+        $keyA = (new Key)->keygen();
         list($encKeyA, $authKeyA) = $keyA->hkdfSplit($salt);
 
-        $keyB = (new Key())->load($keyA->getKey());
+        $keyB = (new Key)->load($keyA->getKey());
         list($encKeyB, $authKeyB) = $keyA->hkdfSplit($salt);
 
         $this->assertSame($encKeyA, $encKeyB);
         $this->assertSame($authKeyA, $authKeyB);
+    }
+
+    /**
+     * @return void
+     */
+    public function testKeyPasswordDerivation()
+    {
+        $password = 'testpw';
+        $salt = random_bytes(\SODIUM_CRYPTO_PWHASH_SALTBYTES);
+
+        $keyA = (new Key)->keygen($password, $salt);
+        $keyB = (new Key)->keygen($password, $salt);
+
+        $this->assertSame($keyA->getKey(), $keyB->getKey());
     }
 }

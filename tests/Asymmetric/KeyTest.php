@@ -15,7 +15,7 @@ class AsymmetricKeyTest extends TestCase
      */
     public function testKeyGeneration()
     {
-        $keypair = new KeyPair();
+        $keypair = new KeyPair;
         $this->assertNull($keypair->getKey(KeyPair::PUB_KEY));
         $this->assertNull($keypair->getKey(KeyPair::PRIV_KEY));
 
@@ -29,8 +29,8 @@ class AsymmetricKeyTest extends TestCase
      */
     public function testKeyDerivation()
     {
-        $keyAlice = (new KeyPair())->keygen();
-        $keyBob = (new KeyPair())->keygen();
+        $keyAlice = (new KeyPair)->keygen();
+        $keyBob = (new KeyPair)->keygen();
 
         $secretAlice = new KeyPair([KeyPair::PRIV_KEY => $keyAlice, KeyPair::PUB_KEY => $keyBob]);
         $secretBob = new KeyPair([KeyPair::PRIV_KEY => $keyBob, KeyPair::PUB_KEY => $keyAlice]);
@@ -55,8 +55,8 @@ class AsymmetricKeyTest extends TestCase
         $passwort = \random_bytes(random_int(2 << 9, 2 << 10));
         $salt = \random_bytes(\SODIUM_CRYPTO_PWHASH_SALTBYTES);
 
-        $keyA = (new KeyPair())->keygen($passwort, $salt);
-        $keyB = (new KeyPair())->keygen($passwort, $salt);
+        $keyA = (new KeyPair)->keygen($passwort, $salt);
+        $keyB = (new KeyPair)->keygen($passwort, $salt);
 
         $this->assertSame($keyA->getKey(KeyPair::PUB_KEY), $keyB->getKey(KeyPair::PUB_KEY));
         $this->assertSame($keyA->getKey(KeyPair::PRIV_KEY), $keyB->getKey(KeyPair::PRIV_KEY));

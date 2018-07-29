@@ -104,9 +104,9 @@ class Crypto extends CryptoBase
     {
         // en/decryping the current file requires a temp-destination,
         // which is later used to overwrite our original source
-        if ($destination === null && $source->storage() instanceof Storage\Disk) {
+        if ($destination === null && $source instanceof Storage\Disk) {
             $destination = new File(new Storage\Disk\Temp());
-        } elseif ($destination === null && $source->storage() instanceof Storage\Memory) {
+        } elseif ($destination === null && $source instanceof Storage\Memory) {
             $destination = new File(new Storage\Memory());
         } elseif ($destination instanceof Storage) {
             $destination = new File($destination);
@@ -155,11 +155,8 @@ class Crypto extends CryptoBase
         // split our key into authentication and encryption keys
         list($encKey, $authKey) = $this->key->hkdfSplit($salt);
 
-        // fetch initial stats from source-file
+        // fetch initial file-hash from source-file
         $initHash = $source->getHash(Hash::CONTENT, 'sha256');
-        $size = $source->getSize();
-        $written = 0;
-        $readBytes = 0;
 
         // open locking file-handles
         $sourceHandle = $source->getHandle(Binary::MODE_READ);
@@ -176,6 +173,11 @@ class Crypto extends CryptoBase
 
         \sodium_memzero($authKey);
         \sodium_memzero($salt);
+
+        // fetch initial stats from source-file
+        $size = $sourceHandle->getSize();
+        $written = 0;
+        $readBytes = 0;
 
         // begin the streaming encryption
         while ($sourceHandle->remainingBytes() > 0) {
@@ -244,15 +246,11 @@ class Crypto extends CryptoBase
      */
     protected function streamDecryptFile(File $source, File $destination): int
     {
-        // fetch initial stats from source-file
-        $cipherEnd = $source->getSize() - \SODIUM_CRYPTO_GENERICHASH_KEYBYTES;
-        $received = 0;
-
         // open locking file-handles
         $sourceHandle = $source->getHandle(Binary::MODE_READ);
         $destinationHandle = $destination->getHandle(Binary::MODE_WRITE);
 
-        $sourceHandle->reset();
+        $sourceHandle->seek();
 
         // read file-header from encrypted file
         $nonce = $sourceHandle->read(\SODIUM_CRYPTO_STREAM_NONCEBYTES);
@@ -270,6 +268,10 @@ class Crypto extends CryptoBase
 
         \sodium_memzero($authKey);
         \sodium_memzero($salt);
+
+        // fetch initial stats from source-file
+        $cipherEnd = $sourceHandle->getSize() - \SODIUM_CRYPTO_GENERICHASH_KEYBYTES;
+        $received = 0;
 
         // decrypt stream
         while ($sourceHandle->remainingBytes() > \SODIUM_CRYPTO_GENERICHASH_KEYBYTES) {
@@ -333,9 +335,9 @@ class Crypto extends CryptoBase
 
         // fetch hmac
         $cipherEnd = $sourceHandle->getSize() - \SODIUM_CRYPTO_GENERICHASH_KEYBYTES;
-        $sourceHandle->reset($cipherEnd);
+        $sourceHandle->seek($cipherEnd);
         $storedMac = $sourceHandle->read(\SODIUM_CRYPTO_GENERICHASH_KEYBYTES);
-        $sourceHandle->reset($start);
+        $sourceHandle->seek($start);
 
         $chunkMACs = [];
 
@@ -373,7 +375,7 @@ class Crypto extends CryptoBase
             throw new MacMismatchException('Invalid message authentication code', 400);
         }
 
-        $sourceHandle->reset($start);
+        $sourceHandle->seek($start);
         return $chunkMACs;
     }
 }

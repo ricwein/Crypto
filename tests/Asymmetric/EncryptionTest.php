@@ -27,7 +27,7 @@ class EncryptionTest extends TestCase
      */
     public function testCrypto()
     {
-        $key = (new Crypto((new KeyPair())->keygen()));
+        $key = (new Crypto((new KeyPair)->keygen()));
 
         // encoded ciphertext
         $message = $this->getMessage();
@@ -50,8 +50,8 @@ class EncryptionTest extends TestCase
      */
     public function testAsymmetricCrypto()
     {
-        $clientKey = (new KeyPair())->keygen();
-        $serverKey = (new KeyPair())->keygen();
+        $clientKey = (new KeyPair)->keygen();
+        $serverKey = (new KeyPair)->keygen();
 
         $clientCrypto = new Crypto($clientKey);
         $serverCrypto = new Crypto($serverKey);
@@ -94,9 +94,9 @@ class EncryptionTest extends TestCase
      */
     public function testMITMSend()
     {
-        $keyAlice = (new KeyPair())->keygen();
-        $keyBob = (new KeyPair())->keygen();
-        $keyEve = (new KeyPair())->keygen();
+        $keyAlice = (new KeyPair)->keygen();
+        $keyBob = (new KeyPair)->keygen();
+        $keyEve = (new KeyPair)->keygen();
 
         $cryptoAlice = new Crypto($keyAlice);
         $cryptoEve = new Crypto($keyEve);
@@ -119,9 +119,9 @@ class EncryptionTest extends TestCase
      */
     public function testMITMReceive()
     {
-        $keyAlice = (new KeyPair())->keygen();
-        $keyBob = (new KeyPair())->keygen();
-        $keyEve = (new KeyPair())->keygen();
+        $keyAlice = (new KeyPair)->keygen();
+        $keyBob = (new KeyPair)->keygen();
+        $keyEve = (new KeyPair)->keygen();
 
         $cryptoAlice = new Crypto($keyAlice);
         $cryptoEve = new Crypto($keyEve);
@@ -141,7 +141,7 @@ class EncryptionTest extends TestCase
      */
     public function testPrivKeyExchange()
     {
-        $keyA = (new KeyPair())->keygen();
+        $keyA = (new KeyPair)->keygen();
         $cryptoA = new Crypto($keyA);
 
         // encoded ciphertext

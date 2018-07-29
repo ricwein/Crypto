@@ -27,7 +27,7 @@ class EncryptionTest extends TestCase
     public function testEncryption()
     {
         $message = $this->getMessage();
-        $key = (new Key())->keygen();
+        $key = (new Key)->keygen();
 
         // encrypt
         $ciphertext = (new Crypto($key))->encrypt($message)->getString(Encoding::RAW);
