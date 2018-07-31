@@ -9,7 +9,7 @@ This library supports:
 -   Diffie Hellman key-exchange for keypairs
 -   ex/import of keys and ciphertexts with support for most common encodings
 
-## Installation
+# Installation
 
 ```shell
 composer require ricwein/crypto
@@ -40,9 +40,7 @@ try {
     file_put_contents(__DIR__ . '/message', $ciphertext->getString());
 
 } catch (Exception $e) {
-
     // something went wrong
-
 }
 ```
 
@@ -63,13 +61,9 @@ try {
     $plaintext = (new Crypto($key))->decrypt($ciphertext);
 
 } catch (MacMismatchException $e) {
-
     // unable to decrypt message, invalid HMAC
-
 } catch (Exception $e) {
-
     // something else went wrong
-
 }
 ```
 
@@ -104,9 +98,7 @@ try {
     file_put_contents(__DIR__ . '/message', $ciphertext->getString());
 
 } catch (Exception $e) {
-
     // something went wrong
-
 }
 ```
 
@@ -135,18 +127,146 @@ try {
     $plaintext = (new Crypto($keyBob))->decrypt($ciphertext, $keyAlice);
 
 } catch (MacMismatchException $e) {
-
     // unable to decrypt message, invalid HMAC for alice
-
 } catch (Exception $e) {
-
     // something else went wrong
-
 }
 ```
 
-## Encoding
+# Encoding
 
-## File-Crypto
+Key-ex/import and ciphertext ex/import supports four types of encoding, provided by `ricwein\Crypto\Encoding`.
 
-`ricwein/filesystem`
+
+
+# File-Crypto
+
+This library also provides RAM-friendly file-en/decrypting using stream-encryption. To use the integrated file-crypto, the `ricwein/filesystem` library is required. It can be installed with:
+
+```shell
+composer require ricwein/filesystem
+```
+
+The usage is the same as the sym/asymmetric en/decryption methods, but instead of encrypting strings into ciphertexts-objects, a File will be encrypted, returning a new File-Object.
+
+Most times it's useful to encrypt a file and replace it's plaintext with the new ciphertext. It should be noted, that this library creates a temp-file in this case, encrypts the sourcefile into the new temp-file, and replaces the source afterwards with the temp-file.
+
+All file-crypto methods support custom destination storages, which can be provided as the last parameter in `encryptFile()` and `decryptFile()`. If a storage is given, the previously described encryption through a temp-file is skipped.
+
+## Symmetric Crypto
+
+### encrypt
+
+```php
+use ricwein\Crypto\Symmetric\Crypto;
+use ricwein\Crypto\Symmetric\Key;
+use ricwein\Crypto\Exceptions\Exception;
+use ricwein\FileSystem\Exceptions\Exception as FileException;
+use ricwein\FileSystem\File;
+use ricwein\FileSystem\Storage;
+
+try {
+    $file = new File(new Storage\Disk(__DIR__, 'file.txt'));
+    $key = (new Key())->keygen();
+
+    // actual encryption
+    $encryptedFile = (new Crypto($key))->encryptFile($file);
+    file_put_contents(__DIR__ . '/key', $key->getKey());
+
+} catch (FileException $e) {
+    // unable to open, read or write the file
+} catch (Exception $e) {
+    // something went wrong
+}
+```
+
+### decrypt
+
+```php
+use ricwein\Crypto\Symmetric\Crypto;
+use ricwein\Crypto\Symmetric\Key;
+use ricwein\Crypto\Exceptions\Exception;
+use ricwein\Crypto\Exceptions\MacMismatchException;
+use ricwein\FileSystem\Exceptions\Exception as FileException;
+use ricwein\FileSystem\File;
+use ricwein\FileSystem\Storage;
+
+try {
+    $encryptedFile = new File(new Storage\Disk(__DIR__, 'file.txt'));
+    $key = new Key(file_get_contents(__DIR__ . '/key'));
+
+    // actual decryption
+    $file = (new Crypto($key))->decryptFile($encryptedFile);
+
+} catch (MacMismatchException $e) {
+    // unable to decrypt message, invalid HMAC
+} catch (FileException $e) {
+    // unable to open, read or write the file
+} catch (Exception $e) {
+    // something else went wrong
+}
+```
+
+## Asymmetric Crypto
+
+> The following example uses two keypairs (alice and bob) with known private-keys in the same code-scope. This is just done for comprehensibility. In real-world cases on side only knowns it's own private-key (public is not required) and the public-key of the other participant.
+
+### encrypt
+
+```php
+use ricwein\Crypto\Asymmetric\Crypto;
+use ricwein\Crypto\Asymmetric\KeyPair;
+use ricwein\Crypto\Exceptions\Exception;
+use ricwein\FileSystem\Exceptions\Exception as FileException;
+use ricwein\FileSystem\File;
+use ricwein\FileSystem\Storage;
+
+try {
+    $file = new File(new Storage\Disk(__DIR__, 'file.txt'));
+    $keyAlice = (new KeyPair())->keygen();
+    $keyBob = (new KeyPair())->keygen();
+
+    // send message from alice to bob
+    $encryptedFile = (new Crypto($keyAlice))->encryptFile($message, null, $keyBob);
+
+    // it's enough to store the private-keys of our keypairs, public-keys can be derived later if required
+    file_put_contents(__DIR__ . '/alice.key', $keyAlice->getKey(KeyPair::PRIV_KEY));
+    file_put_contents(__DIR__ . '/bob.key', $keyBob->getKey(KeyPair::PRIV_KEY));
+
+} catch (FileException $e) {
+    // unable to open, read or write the file
+} catch (Exception $e) {
+    // something went wrong
+}
+```
+
+### decrypt
+
+```php
+use ricwein\Crypto\Ciphertext;
+use ricwein\Crypto\Asymmetric\Crypto;
+use ricwein\Crypto\Asymmetric\KeyPair;
+use ricwein\Crypto\Exceptions\Exception;
+use ricwein\Crypto\Exceptions\MacMismatchException;
+use ricwein\FileSystem\Exceptions\Exception as FileException;
+use ricwein\FileSystem\File;
+use ricwein\FileSystem\Storage;
+
+try {
+    $keyAlice = new KeyPair([
+        KeyPair::PRIV_KEY => file_get_contents(__DIR__ . '/alice.key')
+    ]);
+    $keyBob = new KeyPair([
+        KeyPair::PRIV_KEY => file_get_contents(__DIR__ . '/bob.key')
+    ]);
+    $encryptedFile = new File(new Storage\Disk(__DIR__, 'file.txt'));
+    $file = (new Crypto($keyBob))->decrypt($encryptedFile, null, $keyAlice);
+
+} catch (MacMismatchException $e) {
+    // unable to decrypt message, invalid HMAC for alice
+} catch (FileException $e) {
+    // unable to open, read or write the file
+} catch (Exception $e) {
+    // something else went wrong
+}
+```
