@@ -10,7 +10,7 @@ use ricwein\Crypto\Exceptions\KeyMismatchException;
 use ricwein\Crypto\Exceptions\MacMismatchException;
 use ricwein\FileSystem\File;
 use ricwein\FileSystem\Storage;
-use ricwein\FileSystem\Helper\Hash;
+use ricwein\FileSystem\Enum\Hash;
 use ricwein\FileSystem\Exceptions\UnsupportedException;
 use ricwein\FileSystem\Exceptions\AccessDeniedException;
 use ricwein\FileSystem\Storage\Extensions\Binary;
@@ -114,7 +114,7 @@ class Crypto extends CryptoBase
 
         if (!$destination instanceof File) {
             throw new UnsupportedException(sprintf('unable to use file-base cryptography for the given destination-storage \'%s\'', get_class($destination)), 400);
-        } elseif (!$destination->isWriteable()) {
+        } elseif ($destination->isFile() && !$destination->isWriteable()) {
             throw new AccessDeniedException('unable to write to destination', 500);
         }
 
