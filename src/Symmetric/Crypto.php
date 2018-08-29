@@ -116,6 +116,8 @@ class Crypto extends CryptoBase
             throw new UnsupportedException(sprintf('unable to use file-base cryptography for the given destination-storage \'%s\'', get_class($destination)), 400);
         } elseif ($destination->isFile() && !$destination->isWriteable()) {
             throw new AccessDeniedException('unable to write to destination', 500);
+        } elseif (!$destination->isFile() && !$destination->touch(true)) {
+            throw new AccessDeniedException('unable to create destination file', 500);
         }
 
         return $destination;
