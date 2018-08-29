@@ -877,16 +877,16 @@
         },
         {
             "name": "ricwein/filesystem",
-            "version": "1.1.2",
+            "version": "1.1.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/ricwein/FileSystem.git",
-                "reference": "f4b65ea721ef44d78fdf3a8006a2f3f2893f4db3"
+                "reference": "dfdedf97260c2f9d7510f393eeba1ac2fa077225"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/ricwein/FileSystem/zipball/f4b65ea721ef44d78fdf3a8006a2f3f2893f4db3",
-                "reference": "f4b65ea721ef44d78fdf3a8006a2f3f2893f4db3",
+                "url": "https://api.github.com/repos/ricwein/FileSystem/zipball/dfdedf97260c2f9d7510f393eeba1ac2fa077225",
+                "reference": "dfdedf97260c2f9d7510f393eeba1ac2fa077225",
                 "shasum": ""
             },
             "require": {
@@ -919,7 +919,7 @@
                 }
             ],
             "description": "Filesystem abstraction layer",
-            "time": "2018-08-28T15:14:03+00:00"
+            "time": "2018-08-29T07:52:07+00:00"
         },
         {
             "name": "sebastian/code-unit-reverse-lookup",
