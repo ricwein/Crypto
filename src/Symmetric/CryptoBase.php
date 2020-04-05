@@ -2,6 +2,7 @@
 /**
  * @author Richard Weinhold
  */
+
 namespace ricwein\Crypto\Symmetric;
 
 use ricwein\Crypto\Ciphertext;
@@ -19,7 +20,7 @@ abstract class CryptoBase
     /**
      * @var Key|null
      */
-    protected $key = null;
+    protected ?Key $key = null;
 
     /**
      * @param Key|null $key
@@ -48,7 +49,7 @@ abstract class CryptoBase
     }
 
     /**
-     * @param  Key  $key
+     * @param Key $key
      * @return self
      */
     public function loadKey(Key $key): self
@@ -59,32 +60,32 @@ abstract class CryptoBase
 
     /**
      * encrypt plaintext with libsodium authenticated asymmetric crypto
-     * @param  string $plaintext
-     * @throws KeyMismatchException
+     * @param string $plaintext
      * @return Ciphertext
+     * @throws KeyMismatchException
      */
     abstract public function encrypt(string $plaintext): Ciphertext;
 
     /**
      * decrypt ciphertext with libsodium authenticated asymmetric crypto
-     * @param  Ciphertext $ciphertext
-     * @throws MacMismatchException
+     * @param Ciphertext $ciphertext
      * @return string
+     * @throws MacMismatchException
      */
     abstract public function decrypt(Ciphertext $ciphertext): string;
 
     /**
      * symmetric File encryption using libsodium
-     * @param  File              $source
-     * @param  Storage|File|null $destination
+     * @param File $source
+     * @param Storage|File|null $destination
      * @return File
      */
     abstract public function encryptFile(File $source, $destination = null): File;
 
     /**
      * symmetric File decryption using libsodium
-     * @param  File              $source
-     * @param  Storage|File|null $destination
+     * @param File $source
+     * @param Storage|File|null $destination
      * @return File
      */
     abstract public function decryptFile(File $source, $destination = null): File;

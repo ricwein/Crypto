@@ -2,10 +2,23 @@
 /**
  * @author Richard Weinhold
  */
+
 namespace ricwein\Crypto\Asymmetric;
 
 use ricwein\Crypto\Ciphertext;
+use ricwein\Crypto\Exceptions\EncodingException;
+use ricwein\Crypto\Exceptions\InvalidArgumentException;
+use ricwein\Crypto\Exceptions\KeyMismatchException;
+use ricwein\Crypto\Exceptions\MacMismatchException;
+use ricwein\Crypto\Exceptions\UnexpectedValueException;
 use ricwein\Crypto\Symmetric\Crypto as SymmetricCrypto;
+use ricwein\FileSystem\Exceptions\AccessDeniedException;
+use ricwein\FileSystem\Exceptions\ConstraintsException;
+use ricwein\FileSystem\Exceptions\Exception;
+use ricwein\FileSystem\Exceptions\FileNotFoundException;
+use ricwein\FileSystem\Exceptions\RuntimeException;
+use ricwein\FileSystem\Exceptions\UnexpectedValueException as FileSystemUnexpectedValueException;
+use ricwein\FileSystem\Exceptions\UnsupportedException;
 use ricwein\FileSystem\File;
 
 /**
@@ -14,8 +27,11 @@ use ricwein\FileSystem\File;
 class Crypto extends CryptoBase
 {
     /**
-     * @param  string|KeyPair|null $pubKey
+     * @param string|KeyPair|null $pubKey
      * @return SymmetricCrypto
+     * @throws EncodingException
+     * @throws InvalidArgumentException
+     * @throws UnexpectedValueException
      */
     protected function deriveSymmetricCrypto($pubKey = null): SymmetricCrypto
     {
@@ -28,6 +44,13 @@ class Crypto extends CryptoBase
 
     /**
      * @inheritDoc
+     * @param string $plaintext
+     * @param null $pubKey
+     * @return Ciphertext
+     * @throws InvalidArgumentException
+     * @throws UnexpectedValueException
+     * @throws KeyMismatchException
+     * @throws EncodingException
      */
     public function encrypt(string $plaintext, $pubKey = null): Ciphertext
     {
@@ -37,6 +60,13 @@ class Crypto extends CryptoBase
 
     /**
      * @inheritDoc
+     * @param Ciphertext $ciphertext
+     * @param null $pubKey
+     * @return string
+     * @throws InvalidArgumentException
+     * @throws UnexpectedValueException
+     * @throws EncodingException
+     * @throws MacMismatchException
      */
     public function decrypt(Ciphertext $ciphertext, $pubKey = null): string
     {
@@ -46,14 +76,45 @@ class Crypto extends CryptoBase
 
     /**
      * @inheritDoc
+     * @param File $source
+     * @param null $destination
+     * @param null $pubKey
+     * @return File
+     * @throws AccessDeniedException
+     * @throws ConstraintsException
+     * @throws EncodingException
+     * @throws Exception
+     * @throws FileNotFoundException
+     * @throws FileSystemUnexpectedValueException
+     * @throws InvalidArgumentException
+     * @throws MacMismatchException
+     * @throws RuntimeException
+     * @throws UnexpectedValueException
+     * @throws UnsupportedException
      */
     public function encryptFile(File $source, $destination = null, $pubKey = null): File
     {
         // use symmetric authenticated encryption to encryt and sign the given file
         return $this->deriveSymmetricCrypto($pubKey)->encryptFile($source, $destination);
     }
+
     /**
      * @inheritDoc
+     * @param File $source
+     * @param null $destination
+     * @param null $pubKey
+     * @return File
+     * @throws AccessDeniedException
+     * @throws ConstraintsException
+     * @throws EncodingException
+     * @throws Exception
+     * @throws FileNotFoundException
+     * @throws FileSystemUnexpectedValueException
+     * @throws InvalidArgumentException
+     * @throws MacMismatchException
+     * @throws RuntimeException
+     * @throws UnexpectedValueException
+     * @throws UnsupportedException
      */
     public function decryptFile(File $source, $destination = null, $pubKey = null): File
     {

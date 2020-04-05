@@ -2,10 +2,16 @@
 /**
  * @author Richard Weinhold
  */
+
 namespace ricwein\Crypto;
 
 use ricwein\Crypto\Exceptions\RuntimeException;
 use ricwein\Crypto\Exceptions\UnexpectedValueException;
+use function sodium_crypto_generichash;
+use function sodium_memzero;
+use const SODIUM_CRYPTO_GENERICHASH_BYTES_MAX;
+use const SODIUM_CRYPTO_GENERICHASH_KEYBYTES;
+use const SODIUM_CRYPTO_STREAM_NONCEBYTES;
 
 /**
  * represents ciphertext parts
@@ -16,32 +22,32 @@ class Ciphertext
     /**
      * @var string
      */
-    protected $encrypted;
+    protected string $encrypted;
 
     /**
      * @var string
      */
-    protected $salt;
+    protected string $salt;
 
     /**
      * @var string
      */
-    protected $nonce;
+    protected string $nonce;
 
     /**
      * @var string|null
      */
-    protected $authKey = null;
+    protected ?string $authKey = null;
 
     /**
      * @var string|null
      */
-    protected $mac = null;
+    protected ?string $mac = null;
 
     /**
      * @var string
      */
-    protected $cipher = 'unknown';
+    protected string $cipher = 'unknown';
 
     /**
      * @param string $encrypted
@@ -52,7 +58,7 @@ class Ciphertext
     {
         $this->encrypted = $encrypted;
 
-        $this->salt  = $salt;
+        $this->salt = $salt;
         $this->nonce = $nonce;
     }
 
@@ -61,23 +67,24 @@ class Ciphertext
      */
     public function __destruct()
     {
-        \sodium_memzero($this->encrypted);
-        \sodium_memzero($this->salt);
-        \sodium_memzero($this->nonce);
+        sodium_memzero($this->encrypted);
+        sodium_memzero($this->salt);
+        sodium_memzero($this->nonce);
 
         if ($this->authKey !== null) {
-            \sodium_memzero($this->authKey);
+            sodium_memzero($this->authKey);
         }
 
         if ($this->mac !== null) {
-            \sodium_memzero($this->mac);
+            sodium_memzero($this->mac);
         }
     }
 
     /**
-     * @param  string $ciphertext
-     * @param  string $encoding
+     * @param string $ciphertext
+     * @param string $encoding
      * @return self
+     * @throws Exceptions\EncodingException
      * @throws RuntimeException
      */
     public static function fromString(string $ciphertext, string $encoding = Encoding::BASE64URLSAFE): self
@@ -89,7 +96,7 @@ class Ciphertext
         $newCiphertextObj = new static($encrypted, $salt, $nonce);
 
         // verify mac length
-        if (mb_strlen($mac, '8bit') !== \SODIUM_CRYPTO_GENERICHASH_BYTES_MAX) {
+        if (mb_strlen($mac, '8bit') !== SODIUM_CRYPTO_GENERICHASH_BYTES_MAX) {
             throw new RuntimeException('Invalid length for MAC, is it encoded?', 400);
         }
 
@@ -98,7 +105,7 @@ class Ciphertext
     }
 
     /**
-     * @param  string $message
+     * @param string $message
      * @return array  [description]
      */
     private static function unpackMessageForDecryption(string $message): array
@@ -106,24 +113,24 @@ class Ciphertext
         $length = mb_strlen($message, '8bit');
 
         // the salt is used for key splitting (via HKDF)
-        $salt = mb_substr($message, 0, \SODIUM_CRYPTO_GENERICHASH_KEYBYTES, '8bit');
+        $salt = mb_substr($message, 0, SODIUM_CRYPTO_GENERICHASH_KEYBYTES, '8bit');
 
         // this is the nonce (we authenticated it):
-        $nonce = mb_substr($message, \SODIUM_CRYPTO_GENERICHASH_KEYBYTES, \SODIUM_CRYPTO_STREAM_NONCEBYTES, '8bit');
+        $nonce = mb_substr($message, SODIUM_CRYPTO_GENERICHASH_KEYBYTES, SODIUM_CRYPTO_STREAM_NONCEBYTES, '8bit');
 
         // this is the crypto_stream_xor()ed ciphertext
         $encrypted = mb_substr(
             $message,
-            \SODIUM_CRYPTO_GENERICHASH_KEYBYTES + \SODIUM_CRYPTO_STREAM_NONCEBYTES,
-            $length - (\SODIUM_CRYPTO_GENERICHASH_KEYBYTES + \SODIUM_CRYPTO_STREAM_NONCEBYTES + \SODIUM_CRYPTO_GENERICHASH_BYTES_MAX),
+            SODIUM_CRYPTO_GENERICHASH_KEYBYTES + SODIUM_CRYPTO_STREAM_NONCEBYTES,
+            $length - (SODIUM_CRYPTO_GENERICHASH_KEYBYTES + SODIUM_CRYPTO_STREAM_NONCEBYTES + SODIUM_CRYPTO_GENERICHASH_BYTES_MAX),
             '8bit'
         );
 
         // $hmac is the last 32 bytes
-        $hmac = mb_substr($message, $length - \SODIUM_CRYPTO_GENERICHASH_BYTES_MAX, \SODIUM_CRYPTO_GENERICHASH_BYTES_MAX, '8bit');
+        $hmac = mb_substr($message, $length - SODIUM_CRYPTO_GENERICHASH_BYTES_MAX, SODIUM_CRYPTO_GENERICHASH_BYTES_MAX, '8bit');
 
         // We don't need this anymore.
-        \sodium_memzero($message);
+        sodium_memzero($message);
 
         // Now we return the pieces in a specific order:
         return [$salt, $nonce, $encrypted, $hmac];
@@ -131,8 +138,10 @@ class Ciphertext
 
     /**
      * get ciphertext as string, including mac
-     * @param  string $encoding
+     * @param string $encoding
      * @return string
+     * @throws Exceptions\EncodingException
+     * @throws UnexpectedValueException
      */
     public function getString(string $encoding = Encoding::BASE64URLSAFE): string
     {
@@ -143,6 +152,8 @@ class Ciphertext
 
     /**
      * @return string
+     * @throws Exceptions\EncodingException
+     * @throws UnexpectedValueException
      */
     public function __toString(): string
     {
@@ -150,10 +161,10 @@ class Ciphertext
     }
 
     /**
-     * @param  string $cipher
+     * @param string $cipher
      * @return self
      */
-    public function setCipher(string $cipher)
+    public function setCipher(string $cipher): self
     {
         $this->cipher = $cipher;
         return $this;
@@ -168,7 +179,7 @@ class Ciphertext
     }
 
     /**
-     * @param  string $mac
+     * @param string $mac
      * @return self
      */
     public function setMac(string $mac): self
@@ -178,8 +189,10 @@ class Ciphertext
     }
 
     /**
-     * @param  string $encoding
+     * @param string $encoding
      * @return string
+     * @throws Exceptions\EncodingException
+     * @throws UnexpectedValueException
      */
     public function getMac(string $encoding = Encoding::RAW): string
     {
@@ -193,8 +206,10 @@ class Ciphertext
     }
 
     /**
-     * @param  string|null $mac
+     * @param string|null $mac
      * @return bool
+     * @throws Exceptions\EncodingException
+     * @throws UnexpectedValueException
      */
     public function isValidMac(?string $mac = null): bool
     {
@@ -211,11 +226,11 @@ class Ciphertext
             throw new UnexpectedValueException('Exceptect a valid authentication-key but none given', 400);
         }
 
-        return \sodium_crypto_generichash($this->salt . $this->nonce . $this->encrypted, $this->authKey, \SODIUM_CRYPTO_GENERICHASH_BYTES_MAX);
+        return sodium_crypto_generichash($this->salt . $this->nonce . $this->encrypted, $this->authKey, SODIUM_CRYPTO_GENERICHASH_BYTES_MAX);
     }
 
     /**
-     * @param  string $authKey
+     * @param string $authKey
      * @return self
      */
     public function setAuthKey(string $authKey): self
