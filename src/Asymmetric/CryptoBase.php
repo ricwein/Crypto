@@ -6,6 +6,7 @@
 namespace ricwein\Crypto\Asymmetric;
 
 use ricwein\Crypto\Ciphertext;
+use ricwein\Crypto\Exceptions\EncodingException;
 use ricwein\Crypto\Exceptions\InvalidArgumentException;
 use ricwein\Crypto\Exceptions\UnexpectedValueException;
 use ricwein\FileSystem\File;
@@ -64,7 +65,7 @@ abstract class CryptoBase
      * @param string|KeyPair|null $pubKey
      * @return KeyPair
      * @throws UnexpectedValueException|InvalidArgumentException
-     * @throws \ricwein\Crypto\Exceptions\EncodingException
+     * @throws EncodingException
      */
     public function deriveKeyPair($pubKey = null): KeyPair
     {
@@ -95,9 +96,9 @@ abstract class CryptoBase
             }
             $pubKey = $pubKey->getKey(KeyPair::PUB_KEY);
         } elseif (!is_string($pubKey)) {
-            throw new InvalidArgumentException(sprintf('Encryption-public-key must be string of length %d bytes long, but is of type %s', SODIUM_CRYPTO_BOX_PUBLICKEYBYTES, is_object($pubKey) ? get_class($pubKey) : gettype($pubKey)), 400);
+            throw new InvalidArgumentException(sprintf('Encryption-public-key must be string of length %d bytes long, but is of type %s.', SODIUM_CRYPTO_BOX_PUBLICKEYBYTES, is_object($pubKey) ? get_class($pubKey) : gettype($pubKey)), 400);
         } elseif (mb_strlen($pubKey, '8bit') !== SODIUM_CRYPTO_BOX_PUBLICKEYBYTES) {
-            throw new InvalidArgumentException(sprintf('Encryption-public-key must be string of length %d bytes long, but is %d bytes', SODIUM_CRYPTO_BOX_PUBLICKEYBYTES, mb_strlen($pubKey, '8bit')), 400);
+            throw new InvalidArgumentException(sprintf('Encryption-public-key must be string of length %d bytes long, but is %d bytes.', SODIUM_CRYPTO_BOX_PUBLICKEYBYTES, mb_strlen($pubKey, '8bit')), 400);
         }
 
         // create new Alice-Priv <=> Bob-Pub ephemeral KeyPair

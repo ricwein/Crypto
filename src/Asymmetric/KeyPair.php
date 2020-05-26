@@ -96,7 +96,7 @@ class KeyPair
         // create actual keypair
         if ($password !== null) {
             if ($salt !== null && SODIUM_CRYPTO_PWHASH_SALTBYTES !== $isLength = mb_strlen($salt, '8bit')) {
-                throw new InvalidArgumentException(sprintf('Secret-Key must be %d bytes long, but is %d bytes', SODIUM_CRYPTO_PWHASH_SALTBYTES, $isLength), 400);
+                throw new InvalidArgumentException(sprintf('Keypair-Salt must be %d bytes long, but is %d bytes', SODIUM_CRYPTO_PWHASH_SALTBYTES, $isLength), 400);
             }
 
             if ($salt === null) {

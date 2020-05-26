@@ -2,11 +2,11 @@
 
 This library wrapps the PHP 7 libsodium cryptographic functions into a object-orientated api, allowing a simple and safe usage.
 
-This library supports:
+This library provides:
 
--   symmetric and asymmetric authenticated en/decryption of messages and files
--   cryptographic secure key/keypair generation
--   Diffie Hellman key-exchange for keypairs
+-   symmetric and asymmetric authenticated en/decryption of messages and files using **XSalsa20**
+-   cryptographic secure key and keypair generation
+-   Diffie Hellman key-exchange for keypairs using Curve25519 (**X25519**)
 -   ex/import of keys and ciphertexts with support for most common encodings
 
 # Installation
