@@ -8,6 +8,7 @@ namespace ricwein\Crypto;
 use ParagonIE\ConstantTime\Base64;
 use ParagonIE\ConstantTime\Base64UrlSafe;
 use ricwein\Crypto\Exceptions\EncodingException;
+use SodiumException;
 use function sodium_bin2hex;
 use function sodium_hex2bin;
 
@@ -41,6 +42,7 @@ class Encoding
      * @param string $encoding
      * @return string
      * @throws EncodingException
+     * @throws SodiumException
      */
     public static function encode(string $message, string $encoding): string
     {
@@ -63,6 +65,7 @@ class Encoding
      * @param string $encoding
      * @return string
      * @throws EncodingException
+     * @throws SodiumException
      */
     public static function decode(string $message, string $encoding): string
     {
@@ -86,6 +89,7 @@ class Encoding
      * @param string $toEncoding
      * @return string
      * @throws EncodingException
+     * @throws SodiumException
      */
     public static function reencode(string $message, string $fromEncoding, string $toEncoding): string
     {

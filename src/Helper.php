@@ -7,6 +7,7 @@ namespace ricwein\Crypto;
 
 use ricwein\Crypto\Exceptions\InvalidArgumentException;
 use ricwein\Crypto\Exceptions\UnexpectedValueException;
+use SodiumException;
 use function chr;
 use function is_string;
 use function mb_substr;
@@ -36,7 +37,6 @@ final class Helper
         $length = mb_strlen($string, '8bit');
         $return = '';
 
-        /** @var int $chunk */
         $chunk = $length >> 1;
 
         for ($i = 0; $i < $length; $i += $chunk) {
@@ -54,13 +54,13 @@ final class Helper
      * @param string|null $salt
      * @return string
      * @throws UnexpectedValueException|InvalidArgumentException
+     * @throws SodiumException
      */
     public static function hkdfBlake2b(string $ikm, int $length, string $info = '', ?string $salt = null): string
     {
-
         // Sanity-check the desired output length.
-        if ($length < 0 || $length > (255 * SODIUM_CRYPTO_GENERICHASH_KEYBYTES)) {
-            throw new InvalidArgumentException('bad HKDF digest length', 500);
+        if ($length <= 0 || $length > (255 * SODIUM_CRYPTO_GENERICHASH_KEYBYTES)) {
+            throw new InvalidArgumentException(sprintf("Bad HKDF digest length of %s. Should be in range: [0, %d]", $length, 255 * SODIUM_CRYPTO_GENERICHASH_KEYBYTES), 500);
         }
 
         // "If [salt] not provided, is set to a string of HashLen zeroes."
@@ -76,12 +76,14 @@ final class Helper
         // HKDF-Expand:
         // This check is useless, but it serves as a reminder to the spec.
         if (mb_strlen($prk, '8bit') < SODIUM_CRYPTO_GENERICHASH_KEYBYTES) {
-            throw new UnexpectedValueException('An unknown error has occurred', 500);
+            throw new UnexpectedValueException(sprintf('Invalid hash length for PRK. Must be longer than or equal to %d bytes, but is %d bytes.', SODIUM_CRYPTO_GENERICHASH_KEYBYTES, mb_strlen($prk, '8bit')), 500);
         }
 
         // T(0) = ''
         $t = '';
         $lastBlock = '';
+
+        /** @noinspection SlowArrayOperationsInLoopInspection */
         for ($blockIndex = 1; mb_strlen($t, '8bit') < $length; ++$blockIndex) {
 
             // T(i) = HMAC-Hash(PRK, T(i-1) | info | 0x??)
@@ -92,7 +94,6 @@ final class Helper
         }
 
         // ORM = first L octets of T
-        /** @var string $orm */
         $orm = mb_substr($t, 0, $length, '8bit');
 
         if (!is_string($orm)) {

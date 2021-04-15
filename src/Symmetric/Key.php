@@ -11,6 +11,7 @@ use ricwein\Crypto\Exceptions\EncodingException;
 use ricwein\Crypto\Helper;
 use ricwein\Crypto\Exceptions\InvalidArgumentException;
 use ricwein\Crypto\Exceptions\UnexpectedValueException;
+use SodiumException;
 use function random_bytes;
 use function sodium_crypto_pwhash;
 use function sodium_crypto_secretbox_keygen;
@@ -41,7 +42,7 @@ class Key
     /**
      * @var string|null
      */
-    private $key = null;
+    private ?string $key = null;
 
     /**
      * create new Sodium-Key
@@ -49,6 +50,7 @@ class Key
      * @param string $encoding
      * @throws EncodingException
      * @throws InvalidArgumentException
+     * @throws SodiumException
      */
     public function __construct(?string $key = null, string $encoding = Encoding::RAW)
     {
@@ -59,6 +61,7 @@ class Key
 
     /**
      * safe free key
+     * @throws SodiumException
      */
     public function __destruct()
     {
@@ -122,8 +125,9 @@ class Key
      * @param string $key
      * @param string $encoding
      * @return self
-     * @throws InvalidArgumentException
      * @throws EncodingException
+     * @throws InvalidArgumentException
+     * @throws SodiumException
      */
     public function load(string $key, string $encoding = Encoding::RAW): self
     {
@@ -144,6 +148,7 @@ class Key
      * @param string $encoding
      * @return string|null
      * @throws EncodingException
+     * @throws SodiumException
      */
     public function getKey(string $encoding = Encoding::RAW): ?string
     {
@@ -161,6 +166,7 @@ class Key
      * @return array
      * @throws InvalidArgumentException
      * @throws UnexpectedValueException
+     * @throws SodiumException
      */
     public function hkdfSplit(?string $salt = null): array
     {
@@ -180,6 +186,7 @@ class Key
      * @param string $algo
      * @return string|null
      * @throws EncodingException
+     * @throws SodiumException
      */
     public function fingerprint(string $encoding = Encoding::HEX, string $algo = 'sha256'): ?string
     {

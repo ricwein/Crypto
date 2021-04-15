@@ -11,6 +11,7 @@ use ricwein\Crypto\Exceptions\InvalidArgumentException;
 use ricwein\Crypto\Exceptions\UnexpectedValueException;
 use ricwein\FileSystem\File;
 use ricwein\FileSystem\Storage;
+use SodiumException;
 use const SODIUM_CRYPTO_BOX_PUBLICKEYBYTES;
 
 /**
@@ -61,11 +62,13 @@ abstract class CryptoBase
     }
 
     /**
-     * load pub and secret keys as emphemeral keypair
+     * load pub and secret keys as ephemeral keypair
      * @param string|KeyPair|null $pubKey
      * @return KeyPair
-     * @throws UnexpectedValueException|InvalidArgumentException
      * @throws EncodingException
+     * @throws InvalidArgumentException
+     * @throws UnexpectedValueException
+     * @throws SodiumException
      */
     public function deriveKeyPair($pubKey = null): KeyPair
     {
@@ -78,7 +81,7 @@ abstract class CryptoBase
         }
 
         // load private key
-        $privKey = $this->keypair->getKey(KeyPair::PRIV_KEY);
+        $privateKey = $this->keypair->getKey(KeyPair::PRIV_KEY);
 
         // load public key
         if ($pubKey === null) {
@@ -101,10 +104,10 @@ abstract class CryptoBase
             throw new InvalidArgumentException(sprintf('Encryption-public-key must be string of length %d bytes long, but is %d bytes.', SODIUM_CRYPTO_BOX_PUBLICKEYBYTES, mb_strlen($pubKey, '8bit')), 400);
         }
 
-        // create new Alice-Priv <=> Bob-Pub ephemeral KeyPair
+        // create new Alice-Private <=> Bob-Public ephemeral KeyPair
         return new KeyPair([
             KeyPair::PUB_KEY => $pubKey,
-            KeyPair::PRIV_KEY => $privKey,
+            KeyPair::PRIV_KEY => $privateKey,
         ]);
     }
 

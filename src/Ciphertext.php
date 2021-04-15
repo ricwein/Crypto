@@ -7,6 +7,7 @@ namespace ricwein\Crypto;
 
 use ricwein\Crypto\Exceptions\RuntimeException;
 use ricwein\Crypto\Exceptions\UnexpectedValueException;
+use SodiumException;
 use function sodium_crypto_generichash;
 use function sodium_memzero;
 use const SODIUM_CRYPTO_GENERICHASH_BYTES_MAX;
@@ -64,6 +65,7 @@ class Ciphertext
 
     /**
      * override and release class members
+     * @throws SodiumException
      */
     public function __destruct()
     {
@@ -86,12 +88,13 @@ class Ciphertext
      * @return self
      * @throws Exceptions\EncodingException
      * @throws RuntimeException
+     * @throws SodiumException
      */
     public static function fromString(string $ciphertext, string $encoding = Encoding::BASE64URLSAFE): self
     {
         $ciphertext = Encoding::decode($ciphertext, $encoding);
 
-        list($salt, $nonce, $encrypted, $mac) = self::unpackMessageForDecryption($ciphertext);
+        [$salt, $nonce, $encrypted, $mac] = self::unpackMessageForDecryption($ciphertext);
 
         $newCiphertextObj = new static($encrypted, $salt, $nonce);
 
@@ -107,6 +110,7 @@ class Ciphertext
     /**
      * @param string $message
      * @return array  [description]
+     * @throws SodiumException
      */
     private static function unpackMessageForDecryption(string $message): array
     {
@@ -141,11 +145,12 @@ class Ciphertext
      * @param string $encoding
      * @return string
      * @throws Exceptions\EncodingException
+     * @throws SodiumException
      * @throws UnexpectedValueException
      */
     public function getString(string $encoding = Encoding::BASE64URLSAFE): string
     {
-        $message = $this->salt . $this->nonce . $this->encrypted . $this->getMac(Encoding::RAW);
+        $message = $this->salt . $this->nonce . $this->encrypted . $this->getMac();
 
         return Encoding::encode($message, $encoding);
     }
@@ -153,11 +158,12 @@ class Ciphertext
     /**
      * @return string
      * @throws Exceptions\EncodingException
+     * @throws SodiumException
      * @throws UnexpectedValueException
      */
     public function __toString(): string
     {
-        return $this->getString(Encoding::BASE64URLSAFE);
+        return $this->getString();
     }
 
     /**
@@ -193,6 +199,7 @@ class Ciphertext
      * @return string
      * @throws Exceptions\EncodingException
      * @throws UnexpectedValueException
+     * @throws SodiumException
      */
     public function getMac(string $encoding = Encoding::RAW): string
     {
@@ -209,21 +216,23 @@ class Ciphertext
      * @param string|null $mac
      * @return bool
      * @throws Exceptions\EncodingException
+     * @throws SodiumException
      * @throws UnexpectedValueException
      */
     public function isValidMac(?string $mac = null): bool
     {
-        return hash_equals($mac ?? $this->getMac(Encoding::RAW), $this->calcMac());
+        return hash_equals($mac ?? $this->getMac(), $this->calcMac());
     }
 
     /**
      * @return string raw-binary
+     * @throws SodiumException
      * @throws UnexpectedValueException
      */
     protected function calcMac(): string
     {
         if ($this->authKey === null) {
-            throw new UnexpectedValueException('Exceptect a valid authentication-key but none given', 400);
+            throw new UnexpectedValueException('Expected a valid authentication-key but none given', 400);
         }
 
         return sodium_crypto_generichash($this->salt . $this->nonce . $this->encrypted, $this->authKey, SODIUM_CRYPTO_GENERICHASH_BYTES_MAX);

@@ -12,6 +12,7 @@ use ricwein\Crypto\Helper;
 use ricwein\Crypto\Symmetric\Key;
 use ricwein\Crypto\Exceptions\InvalidArgumentException;
 use ricwein\Crypto\Exceptions\UnexpectedValueException;
+use SodiumException;
 use function random_bytes;
 use function sodium_crypto_box_keypair;
 use function sodium_crypto_box_keypair_from_secretkey_and_publickey;
@@ -50,7 +51,7 @@ class KeyPair
     /**
      * @var string[]
      */
-    private $keypair = [
+    private array $keypair = [
         self::PUB_KEY => null,
         self::PRIV_KEY => null,
     ];
@@ -61,6 +62,7 @@ class KeyPair
      * @param string $encoding
      * @throws EncodingException
      * @throws InvalidArgumentException
+     * @throws SodiumException
      * @throws UnexpectedValueException
      */
     public function __construct(?array $keys = null, string $encoding = Encoding::RAW)
@@ -72,6 +74,7 @@ class KeyPair
 
     /**
      * safe free keys
+     * @throws SodiumException
      */
     public function __destruct()
     {
@@ -83,7 +86,7 @@ class KeyPair
     }
 
     /**
-     * create new priv/pub keypair
+     * create new private/public keypair
      * @param string|null $password
      * @param string|null $salt
      * @return self
@@ -146,9 +149,10 @@ class KeyPair
      * @param string[]|self[]|Key[] $keys
      * @param string $encoding
      * @return self
-     * @throws InvalidArgumentException
-     * @throws UnexpectedValueException
      * @throws EncodingException
+     * @throws InvalidArgumentException
+     * @throws SodiumException
+     * @throws UnexpectedValueException
      */
     public function load(array $keys, string $encoding = Encoding::RAW): self
     {
@@ -213,6 +217,7 @@ class KeyPair
 
     /**
      * @return self
+     * @throws SodiumException
      * @throws UnexpectedValueException
      */
     public function derivePublicKey(): self
@@ -231,6 +236,7 @@ class KeyPair
      * @return string|null
      * @throws InvalidArgumentException
      * @throws EncodingException
+     * @throws SodiumException
      */
     public function getKey(string $type, string $encoding = Encoding::RAW): ?string
     {
@@ -247,6 +253,7 @@ class KeyPair
      * @param string $encoding
      * @return string|null
      * @throws EncodingException
+     * @throws SodiumException
      * @throws UnexpectedValueException
      */
     public function getKeyPair(string $encoding = Encoding::RAW): ?string
@@ -268,6 +275,7 @@ class KeyPair
      * @return Key
      * @throws EncodingException
      * @throws InvalidArgumentException
+     * @throws SodiumException
      * @throws UnexpectedValueException
      */
     public function getSharedSecret(): Key
@@ -292,9 +300,10 @@ class KeyPair
      * use Blake2b HKDF to derive separated encryption and authentication keys from derived shared-secret
      * @param string|null $salt
      * @return array
-     * @throws InvalidArgumentException
-     * @throws UnexpectedValueException
      * @throws EncodingException
+     * @throws InvalidArgumentException
+     * @throws SodiumException
+     * @throws UnexpectedValueException
      */
     public function hkdfSplit(?string $salt = null): array
     {

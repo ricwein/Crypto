@@ -20,10 +20,10 @@ use ricwein\FileSystem\Exceptions\RuntimeException;
 use ricwein\FileSystem\Exceptions\UnexpectedValueException as FileSystemUnexpectedValueException;
 use ricwein\FileSystem\File;
 use ricwein\FileSystem\Storage;
-use ricwein\FileSystem\Enum\Hash;
 use ricwein\FileSystem\Exceptions\UnsupportedException;
 use ricwein\FileSystem\Exceptions\AccessDeniedException;
 use ricwein\FileSystem\Storage\Extensions\Binary;
+use SodiumException;
 use function array_shift;
 use function hash_equals;
 use function is_string;
@@ -97,6 +97,7 @@ class Crypto extends CryptoBase
      * @throws EncodingException
      * @throws InvalidArgumentException
      * @throws UnexpectedValueException
+     * @throws SodiumException
      */
     public function decrypt(Ciphertext $ciphertext): string
     {
@@ -216,10 +217,10 @@ class Crypto extends CryptoBase
         $salt = random_bytes(SODIUM_CRYPTO_STREAM_KEYBYTES);
 
         // split our key into authentication and encryption keys
-        list($encKey, $authKey) = $this->key->hkdfSplit($salt);
+        [$encKey, $authKey] = $this->key->hkdfSplit($salt);
 
         // fetch initial file-hash from source-file
-        $initHash = $source->getHash(Hash::CONTENT, 'sha256');
+        $initHash = $source->getHash();
 
         // open locking file-handles
         $sourceHandle = $source->getHandle(Binary::MODE_READ);
@@ -264,7 +265,7 @@ class Crypto extends CryptoBase
         sodium_memzero($nonce);
 
         // Check that our input file was not modified before we MAC it
-        if (!hash_equals($source->getHash(Hash::CONTENT, 'sha256'), $initHash)) {
+        if (!hash_equals($source->getHash(), $initHash)) {
             throw new MacMismatchException('read-only file has been modified since it was opened for reading', 500);
         }
 
@@ -296,6 +297,7 @@ class Crypto extends CryptoBase
      * @throws RuntimeException
      * @throws UnexpectedValueException
      * @throws UnsupportedException
+     * @throws SodiumException
      */
     public function decryptFile(File $source, $destination = null): File
     {
@@ -325,6 +327,7 @@ class Crypto extends CryptoBase
      * @throws RuntimeException
      * @throws UnexpectedValueException
      * @throws UnsupportedException
+     * @throws SodiumException
      */
     protected function streamDecryptFile(File $source, File $destination): int
     {
@@ -411,8 +414,9 @@ class Crypto extends CryptoBase
      * @return array
      * @throws MacMismatchException
      * @throws RuntimeException
+     * @throws SodiumException
      */
-    final private function verifyStreamMac(Binary $sourceHandle, string $mac): array
+    private function verifyStreamMac(Binary $sourceHandle, string $mac): array
     {
         $start = $sourceHandle->getPos();
 

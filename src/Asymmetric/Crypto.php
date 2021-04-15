@@ -20,6 +20,7 @@ use ricwein\FileSystem\Exceptions\RuntimeException;
 use ricwein\FileSystem\Exceptions\UnexpectedValueException as FileSystemUnexpectedValueException;
 use ricwein\FileSystem\Exceptions\UnsupportedException;
 use ricwein\FileSystem\File;
+use SodiumException;
 
 /**
  * asymmetric Crypto using libsodium
@@ -31,6 +32,7 @@ class Crypto extends CryptoBase
      * @return SymmetricCrypto
      * @throws EncodingException
      * @throws InvalidArgumentException
+     * @throws SodiumException
      * @throws UnexpectedValueException
      */
     protected function deriveSymmetricCrypto($pubKey = null): SymmetricCrypto
@@ -47,14 +49,15 @@ class Crypto extends CryptoBase
      * @param string $plaintext
      * @param null $pubKey
      * @return Ciphertext
-     * @throws InvalidArgumentException
-     * @throws UnexpectedValueException
-     * @throws KeyMismatchException
      * @throws EncodingException
+     * @throws InvalidArgumentException
+     * @throws KeyMismatchException
+     * @throws SodiumException
+     * @throws UnexpectedValueException
      */
     public function encrypt(string $plaintext, $pubKey = null): Ciphertext
     {
-        // use symmetric authenticated encryption to encryt and sign the given message
+        // use symmetric authenticated encryption to encrypt and sign the given message
         return $this->deriveSymmetricCrypto($pubKey)->encrypt($plaintext);
     }
 
@@ -63,14 +66,15 @@ class Crypto extends CryptoBase
      * @param Ciphertext $ciphertext
      * @param null $pubKey
      * @return string
-     * @throws InvalidArgumentException
-     * @throws UnexpectedValueException
      * @throws EncodingException
+     * @throws InvalidArgumentException
      * @throws MacMismatchException
+     * @throws UnexpectedValueException
+     * @throws SodiumException
      */
     public function decrypt(Ciphertext $ciphertext, $pubKey = null): string
     {
-        // use symmetric authenticated encryption to decryt and validate (HMAC) the given message
+        // use symmetric authenticated encryption to decrypt and validate (HMAC) the given message
         return $this->deriveSymmetricCrypto($pubKey)->decrypt($ciphertext);
     }
 
@@ -89,12 +93,13 @@ class Crypto extends CryptoBase
      * @throws InvalidArgumentException
      * @throws MacMismatchException
      * @throws RuntimeException
+     * @throws SodiumException
      * @throws UnexpectedValueException
      * @throws UnsupportedException
      */
     public function encryptFile(File $source, $destination = null, $pubKey = null): File
     {
-        // use symmetric authenticated encryption to encryt and sign the given file
+        // use symmetric authenticated encryption to encrypt and sign the given file
         return $this->deriveSymmetricCrypto($pubKey)->encryptFile($source, $destination);
     }
 
@@ -113,12 +118,13 @@ class Crypto extends CryptoBase
      * @throws InvalidArgumentException
      * @throws MacMismatchException
      * @throws RuntimeException
+     * @throws SodiumException
      * @throws UnexpectedValueException
      * @throws UnsupportedException
      */
     public function decryptFile(File $source, $destination = null, $pubKey = null): File
     {
-        // use symmetric authenticated encryption to encryt and sign the given file
+        // use symmetric authenticated encryption to encrypt and sign the given file
         return $this->deriveSymmetricCrypto($pubKey)->decryptFile($source, $destination);
     }
 }
