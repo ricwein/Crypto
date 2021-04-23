@@ -36,20 +36,11 @@ use const SODIUM_CRYPTO_PWHASH_SALTBYTES;
  */
 class KeyPair
 {
-    /**
-     * public key
-     * @var string
-     */
     public const PUB_KEY = 'publickey';
-
-    /**
-     * private key
-     * @var string
-     */
     public const PRIV_KEY = 'privatekey';
 
     /**
-     * @var string[]
+     * @var array<string, string>
      */
     private array $keypair = [
         self::PUB_KEY => null,
@@ -58,18 +49,116 @@ class KeyPair
 
     /**
      * create new Sodium-KeyPair (X25519)
-     * @param string[]|null $keys
-     * @param string $encoding
+     * @param array<string, string|self|Key> $keys
+     * @throws EncodingException
+     * @throws InvalidArgumentException
+     * @throws SodiumException
+     * @throws UnexpectedValueException
+     * @internal
+     */
+    public function __construct(array $keys, string $encoding = Encoding::RAW)
+    {
+        foreach ($keys as $type => $key) {
+            if (in_array($type, [self::PUB_KEY, 'publicKey', 'public', 'pubKey'], true)) {
+
+                $this->loadPublicKey($key, $encoding);
+                unset($keys[$type]);
+
+            } elseif (in_array($type, [self::PRIV_KEY, 'privateKey', 'secretKey', 'private', 'secret', 'privKey', 'secKey'], true)) {
+
+                $this->loadPrivateKey($key, $encoding);
+                unset($keys[$type]);
+
+            } else {
+                throw new InvalidArgumentException(sprintf('invalid key-type \'%s\'', $type), 500);
+            }
+        }
+
+        if ($this->keypair[self::PUB_KEY] === null) {
+            $this->derivePublicKey();
+        }
+    }
+
+    /**
      * @throws EncodingException
      * @throws InvalidArgumentException
      * @throws SodiumException
      * @throws UnexpectedValueException
      */
-    public function __construct(?array $keys = null, string $encoding = Encoding::RAW)
+    public static function generate(): self
     {
-        if ($keys !== null) {
-            $this->load($keys, $encoding);
+        $keyPair = sodium_crypto_box_keypair();
+
+        $key = new self([
+            self::PRIV_KEY => sodium_crypto_box_secretkey($keyPair),
+            self::PUB_KEY => sodium_crypto_box_publickey($keyPair),
+        ]);
+
+        // Let's wipe our $keyPair variable
+        sodium_memzero($keyPair);
+
+        return $key;
+    }
+
+    /**
+     * @throws EncodingException
+     * @throws InvalidArgumentException
+     * @throws SodiumException
+     * @throws UnexpectedValueException
+     * @throws Exception
+     */
+    public static function generateFrom(string $password, ?string $salt = null): self
+    {
+        if ($salt !== null && SODIUM_CRYPTO_PWHASH_SALTBYTES !== $isLength = mb_strlen($salt, '8bit')) {
+            throw new InvalidArgumentException(sprintf('Keypair-Salt must be %d bytes long, but is %d bytes', SODIUM_CRYPTO_PWHASH_SALTBYTES, $isLength), 400);
         }
+
+        if ($salt === null) {
+            $salt = random_bytes(SODIUM_CRYPTO_PWHASH_SALTBYTES);
+        }
+
+        /**
+         * Diffie Hellman key exchange key pair
+         * @var string
+         */
+        $seed = @sodium_crypto_pwhash(
+            SODIUM_CRYPTO_BOX_SEEDBYTES,
+            $password,
+            $salt,
+            SODIUM_CRYPTO_PWHASH_OPSLIMIT_INTERACTIVE,
+            SODIUM_CRYPTO_PWHASH_MEMLIMIT_INTERACTIVE,
+            SODIUM_CRYPTO_PWHASH_ALG_ARGON2ID13
+        );
+
+        sodium_memzero($password);
+        sodium_memzero($salt);
+
+        // Encryption keypair
+        $keyPair = sodium_crypto_box_seed_keypair($seed);
+
+        // Let's wipe our $keyPair variable
+        sodium_memzero($seed);
+
+        $key = new self([
+            self::PRIV_KEY => sodium_crypto_box_secretkey($keyPair),
+            self::PUB_KEY => sodium_crypto_box_publickey($keyPair),
+        ]);
+
+        // Let's wipe our $keyPair variable
+        sodium_memzero($keyPair);
+
+        return $key;
+    }
+
+    /**
+     * @throws EncodingException
+     * @throws InvalidArgumentException
+     * @throws SodiumException
+     * @throws UnexpectedValueException
+     */
+    public static function load(array $keys, string $encoding = Encoding::RAW): self
+    {
+        return new self($keys, $encoding);
     }
 
     /**
@@ -86,133 +175,57 @@ class KeyPair
     }
 
     /**
-     * create new private/public keypair
-     * @param string|null $password
-     * @param string|null $salt
-     * @return self
-     * @throws Exception
+     * @throws EncodingException
+     * @throws SodiumException
      * @throws InvalidArgumentException
      */
-    public function keygen(?string $password = null, ?string $salt = null): self
+    private function loadPublicKey(string|self|Key $key, string $encoding = Encoding::RAW): void
     {
-
-        // create actual keypair
-        if ($password !== null) {
-            if ($salt !== null && SODIUM_CRYPTO_PWHASH_SALTBYTES !== $isLength = mb_strlen($salt, '8bit')) {
-                throw new InvalidArgumentException(sprintf('Keypair-Salt must be %d bytes long, but is %d bytes', SODIUM_CRYPTO_PWHASH_SALTBYTES, $isLength), 400);
-            }
-
-            if ($salt === null) {
-                $salt = random_bytes(SODIUM_CRYPTO_PWHASH_SALTBYTES);
-            }
-
-            /**
-             * Diffie Hellman key exchange key pair
-             * @var string
-             */
-            $seed = @sodium_crypto_pwhash(
-                SODIUM_CRYPTO_BOX_SEEDBYTES,
-                $password,
-                $salt,
-                SODIUM_CRYPTO_PWHASH_OPSLIMIT_INTERACTIVE,
-                SODIUM_CRYPTO_PWHASH_MEMLIMIT_INTERACTIVE,
-                SODIUM_CRYPTO_PWHASH_ALG_ARGON2ID13
-            );
-
-            sodium_memzero($password);
-            sodium_memzero($salt);
-
-            // Encryption keypair
-            $keyPair = sodium_crypto_box_seed_keypair($seed);
-
-            // Let's wipe our $keyPair variable
-            sodium_memzero($seed);
+        // fetch/decoded key
+        if ($key instanceof self) {
+            $keyData = $key->getKey(self::PUB_KEY);
+        } elseif ($key instanceof Key) {
+            $keyData = $key->getKey();
         } else {
-
-            // Encryption keypair
-            $keyPair = sodium_crypto_box_keypair();
+            $keyData = Encoding::decode($key, $encoding);
         }
 
-        // extract private-key from keypair
-        $this->keypair[self::PRIV_KEY] = sodium_crypto_box_secretkey($keyPair);
+        // check key-length
+        if (SODIUM_CRYPTO_BOX_PUBLICKEYBYTES !== $isLength = mb_strlen($keyData, '8bit')) {
+            throw new InvalidArgumentException(sprintf('Encryption-public-key must be %d bytes long, but is %d bytes', SODIUM_CRYPTO_BOX_PUBLICKEYBYTES, $isLength), 400);
+        }
 
-        // extract public-key from keypair
-        $this->keypair[self::PUB_KEY] = sodium_crypto_box_publickey($keyPair);
+        // set public key
+        $this->keypair[self::PUB_KEY] = $keyData;
 
-        // Let's wipe our $keyPair variable
-        sodium_memzero($keyPair);
-
-        return $this;
+        sodium_memzero($keyData);
     }
 
     /**
-     * @param string[]|self[]|Key[] $keys
-     * @param string $encoding
-     * @return self
      * @throws EncodingException
      * @throws InvalidArgumentException
      * @throws SodiumException
-     * @throws UnexpectedValueException
      */
-    public function load(array $keys, string $encoding = Encoding::RAW): self
+    private function loadPrivateKey(string|self|Key $key, string $encoding = Encoding::RAW): void
     {
-        foreach ($keys as $type => $key) {
-            if (in_array($type, [self::PUB_KEY, 'publicKey', 'public', 'pubKey'], true)) {
-
-                // fetch/decoded key
-                if (is_string($key)) {
-                    $key = Encoding::decode($key, $encoding);
-                } elseif ($key instanceof self) {
-                    $key = $key->getKey(self::PUB_KEY);
-                } elseif ($key instanceof Key) {
-                    $key = $key->getKey();
-                } else {
-                    throw new InvalidArgumentException(sprintf('invalid type \'%s\' for key \'%s\'', gettype($key), $type), 500);
-                }
-
-                // check key-length
-                if (SODIUM_CRYPTO_BOX_PUBLICKEYBYTES !== $isLength = mb_strlen($key, '8bit')) {
-                    throw new InvalidArgumentException(sprintf('Encryption-public-key must be %d bytes long, but is %d bytes', SODIUM_CRYPTO_BOX_PUBLICKEYBYTES, $isLength), 400);
-                }
-
-                // set public key
-                $this->keypair[self::PUB_KEY] = $key;
-
-                sodium_memzero($key);
-                unset($keys[$type]);
-            } elseif (in_array($type, [self::PRIV_KEY, 'privateKey', 'secretKey', 'private', 'secret', 'privKey', 'secKey'], true)) {
-
-                // fetch/decoded key
-                if (is_string($key)) {
-                    $key = Encoding::decode($key, $encoding);
-                } elseif ($key instanceof self) {
-                    $key = $key->getKey(self::PRIV_KEY);
-                } elseif ($key instanceof Key) {
-                    $key = $key->getKey();
-                } else {
-                    throw new InvalidArgumentException(sprintf('invalid type \'%s\' for key \'%s\'', gettype($key), $type), 500);
-                }
-
-                // check key-length
-                if (SODIUM_CRYPTO_BOX_SECRETKEYBYTES !== $isLength = mb_strlen($key, '8bit')) {
-                    throw new InvalidArgumentException(sprintf('Encryption-secret-key must be %d bytes long, but is %d bytes', SODIUM_CRYPTO_BOX_SECRETKEYBYTES, $isLength), 400);
-                }
-
-                // set private key
-                $this->keypair[self::PRIV_KEY] = $key;
-
-                sodium_memzero($key);
-                unset($keys[$type]);
-            } else {
-                throw new InvalidArgumentException(sprintf('invalid key-type \'%s\'', $type), 500);
-            }
+        // fetch/decoded key
+        if ($key instanceof self) {
+            $keyData = $key->getKey(self::PRIV_KEY);
+        } elseif ($key instanceof Key) {
+            $keyData = $key->getKey();
+        } else {
+            $keyData = Encoding::decode($key, $encoding);
         }
 
-        if ($this->keypair[self::PUB_KEY] === null) {
-            $this->derivePublicKey();
+        // check key-length
+        if (SODIUM_CRYPTO_BOX_SECRETKEYBYTES !== $isLength = mb_strlen($keyData, '8bit')) {
+            throw new InvalidArgumentException(sprintf('Encryption-secret-key must be %d bytes long, but is %d bytes', SODIUM_CRYPTO_BOX_SECRETKEYBYTES, $isLength), 400);
         }
 
-        return $this;
+        // set private key
+        $this->keypair[self::PRIV_KEY] = $keyData;
+
+        sodium_memzero($keyData);
     }
 
     /**
@@ -273,7 +286,6 @@ class KeyPair
     /**
      * Elliptical Curve (Curve25519) Diffie-Hellman X25519
      * @return Key
-     * @throws EncodingException
      * @throws InvalidArgumentException
      * @throws SodiumException
      * @throws UnexpectedValueException
@@ -300,7 +312,6 @@ class KeyPair
      * use Blake2b HKDF to derive separated encryption and authentication keys from derived shared-secret
      * @param string|null $salt
      * @return array
-     * @throws EncodingException
      * @throws InvalidArgumentException
      * @throws SodiumException
      * @throws UnexpectedValueException

@@ -1,97 +1,121 @@
-<?php declare(strict_types = 1);
+<?php declare(strict_types=1);
 
 namespace ricwein\Crypto\Tests\Symmetric;
 
+use Exception;
 use PHPUnit\Framework\TestCase;
 use ricwein\Crypto\Encoding;
+use ricwein\Crypto\Exceptions\EncodingException;
+use ricwein\Crypto\Exceptions\InvalidArgumentException;
+use ricwein\Crypto\Exceptions\UnexpectedValueException;
 use ricwein\Crypto\Symmetric\Key;
+use SodiumException;
 
 /**
-* test symmetric key generation and usage
+ * test symmetric key generation and usage
  */
 class KeyTest extends TestCase
 {
     /**
      * @return void
+     * @throws SodiumException
+     * @throws EncodingException
+     * @throws InvalidArgumentException
      */
-    public function testKeyGeneration()
+    public function testKeyGeneration(): void
     {
-        $key = new Key;
-        $this->assertNull($key->getKey());
-
-        $key->keygen();
-        $this->assertSame(mb_strlen($key->getKey(), '8bit'), \SODIUM_CRYPTO_SECRETBOX_KEYBYTES);
+        $key = Key::generate();
+        self::assertSame(mb_strlen($key->getKey(), '8bit'), SODIUM_CRYPTO_SECRETBOX_KEYBYTES);
     }
 
     /**
      * @return void
+     * @throws EncodingException
+     * @throws InvalidArgumentException
+     * @throws SodiumException
      */
-    public function testKeyLoading()
+    public function testKeyLoading(): void
     {
-        $keyA = (new Key)->keygen();
+        $keyA = Key::generate();
 
-        $keyB = new Key($keyA->getKey());
-        $keyC = new Key($keyA->getKey(Encoding::BASE64URLSAFE), Encoding::BASE64URLSAFE);
-        $this->assertSame($keyA->getKey(), $keyB->getKey());
-        $this->assertSame($keyA->getKey(), $keyC->getKey());
+        $keyB = Key::load($keyA);
+        $keyC = Key::load($keyA->getKey(Encoding::BASE64URLSAFE), Encoding::BASE64URLSAFE);
+        self::assertSame($keyA->getKey(), $keyB->getKey());
+        self::assertSame($keyA->getKey(), $keyC->getKey());
     }
 
     /**
      * @return void
+     * @throws EncodingException
+     * @throws InvalidArgumentException
+     * @throws SodiumException
      */
-    public function testFingerprinting()
+    public function testFingerprinting(): void
     {
-        $keyA = (new Key)->keygen();
+        $keyA = Key::generate();
 
-        $keyB = new Key($keyA->getKey());
-        $keyC = new Key($keyA->getKey(Encoding::BASE64URLSAFE), Encoding::BASE64URLSAFE);
-        $this->assertSame($keyA->fingerprint(), $keyB->fingerprint());
-        $this->assertSame($keyA->fingerprint(), $keyC->fingerprint());
+        $keyB = Key::load($keyA);
+        $keyC = Key::load($keyA->getKey(Encoding::BASE64URLSAFE), Encoding::BASE64URLSAFE);
+        self::assertSame($keyA->fingerprint(), $keyB->fingerprint());
+        self::assertSame($keyA->fingerprint(), $keyC->fingerprint());
     }
 
     /**
      * @return void
+     * @throws EncodingException
+     * @throws InvalidArgumentException
+     * @throws SodiumException
+     * @throws UnexpectedValueException
      */
-    public function testHKDFSplitting()
+    public function testHKDFSplitting(): void
     {
-        $keyA = (new Key)->keygen();
-        list($encKeyA, $authKeyA) = $keyA->hkdfSplit();
+        $keyA = Key::generate();
+        [$encKeyA, $authKeyA] = $keyA->hkdfSplit();
 
-        $keyB = (new Key)->load($keyA->getKey());
-        list($encKeyB, $authKeyB) = $keyA->hkdfSplit();
+        $keyB = Key::load($keyA);
+        [$encKeyB, $authKeyB] = $keyB->hkdfSplit();
 
-        $this->assertSame($encKeyA, $encKeyB);
-        $this->assertSame($authKeyA, $authKeyB);
+        self::assertSame($encKeyA, $encKeyB);
+        self::assertSame($authKeyA, $authKeyB);
     }
 
     /**
      * @return void
+     * @throws EncodingException
+     * @throws InvalidArgumentException
+     * @throws SodiumException
+     * @throws UnexpectedValueException
+     * @throws Exception
      */
-    public function testSaltedHKDFSplitting()
+    public function testSaltedHKDFSplitting(): void
     {
-        $salt = random_bytes(\SODIUM_CRYPTO_GENERICHASH_KEYBYTES);
+        $salt = random_bytes(SODIUM_CRYPTO_GENERICHASH_KEYBYTES);
 
-        $keyA = (new Key)->keygen();
-        list($encKeyA, $authKeyA) = $keyA->hkdfSplit($salt);
+        $keyA = Key::generate();
+        [$encKeyA, $authKeyA] = $keyA->hkdfSplit($salt);
 
-        $keyB = (new Key)->load($keyA->getKey());
-        list($encKeyB, $authKeyB) = $keyA->hkdfSplit($salt);
+        $keyB = Key::load($keyA);
+        [$encKeyB, $authKeyB] = $keyB->hkdfSplit($salt);
 
-        $this->assertSame($encKeyA, $encKeyB);
-        $this->assertSame($authKeyA, $authKeyB);
+        self::assertSame($encKeyA, $encKeyB);
+        self::assertSame($authKeyA, $authKeyB);
     }
 
     /**
      * @return void
+     * @throws EncodingException
+     * @throws InvalidArgumentException
+     * @throws SodiumException
+     * @throws Exception
      */
-    public function testKeyPasswordDerivation()
+    public function testKeyPasswordDerivation(): void
     {
-        $password = 'testpw';
-        $salt = random_bytes(\SODIUM_CRYPTO_PWHASH_SALTBYTES);
+        $password = 'test-passwd';
+        $salt = random_bytes(SODIUM_CRYPTO_PWHASH_SALTBYTES);
 
-        $keyA = (new Key)->keygen($password, $salt);
-        $keyB = (new Key)->keygen($password, $salt);
+        $keyA = Key::generateFrom($password, $salt);
+        $keyB = Key::generateFrom($password, $salt);
 
-        $this->assertSame($keyA->getKey(), $keyB->getKey());
+        self::assertSame($keyA->getKey(), $keyB->getKey());
     }
 }

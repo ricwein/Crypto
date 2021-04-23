@@ -176,6 +176,7 @@ class Crypto extends CryptoBase
      * @throws InvalidArgumentException
      * @throws MacMismatchException
      * @throws RuntimeException
+     * @throws SodiumException
      * @throws UnexpectedValueException
      * @throws UnsupportedException
      */
@@ -199,13 +200,13 @@ class Crypto extends CryptoBase
      * @param File $source
      * @param File $destination
      * @return int bytes written
-     * @throws AccessDeniedException
      * @throws ConstraintsException
      * @throws FileNotFoundException
      * @throws FileSystemUnexpectedValueException
      * @throws InvalidArgumentException
      * @throws MacMismatchException
      * @throws RuntimeException
+     * @throws SodiumException
      * @throws UnexpectedValueException
      * @throws UnsupportedException
      * @throws Exception
@@ -319,15 +320,14 @@ class Crypto extends CryptoBase
      * @param File $source
      * @param File $destination
      * @return int bytes written
-     * @throws AccessDeniedException
      * @throws ConstraintsException
      * @throws FileNotFoundException
      * @throws InvalidArgumentException
      * @throws MacMismatchException
      * @throws RuntimeException
+     * @throws SodiumException
      * @throws UnexpectedValueException
      * @throws UnsupportedException
-     * @throws SodiumException
      */
     protected function streamDecryptFile(File $source, File $destination): int
     {

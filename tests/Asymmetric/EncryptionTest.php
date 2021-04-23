@@ -1,20 +1,29 @@
-<?php declare(strict_types = 1);
+<?php declare(strict_types=1);
 
 namespace ricwein\Crypto\Tests\Asymmetric;
 
+use Exception;
 use PHPUnit\Framework\TestCase;
 use ricwein\Crypto\Asymmetric\Crypto;
 use ricwein\Crypto\Asymmetric\KeyPair;
 use ricwein\Crypto\Ciphertext;
 use ricwein\Crypto\Encoding;
+use ricwein\Crypto\Exceptions\EncodingException;
+use ricwein\Crypto\Exceptions\InvalidArgumentException;
+use ricwein\Crypto\Exceptions\KeyMismatchException;
+use ricwein\Crypto\Exceptions\MacMismatchException;
+use ricwein\Crypto\Exceptions\RuntimeException;
+use ricwein\Crypto\Exceptions\UnexpectedValueException;
+use SodiumException;
 
 /**
-* test asymmetric message en/decryption
+ * test asymmetric message en/decryption
  */
 class EncryptionTest extends TestCase
 {
     /**
      * @return string
+     * @throws Exception
      */
     protected function getMessage(): string
     {
@@ -24,34 +33,50 @@ class EncryptionTest extends TestCase
     /**
      * test single-key encryption and decryption with random keypair
      * @return void
+     * @throws SodiumException
+     * @throws EncodingException
+     * @throws InvalidArgumentException
+     * @throws KeyMismatchException
+     * @throws MacMismatchException
+     * @throws RuntimeException
+     * @throws UnexpectedValueException
+     * @throws Exception
      */
-    public function testCrypto()
+    public function testCrypto(): void
     {
-        $key = (new Crypto((new KeyPair)->keygen()));
+        $key = (new Crypto(KeyPair::generate()));
 
         // encoded ciphertext
         $message = $this->getMessage();
         $ciphertext = $key->encrypt($message)->getString();
         $plaintext = $key->decrypt(Ciphertext::fromString($ciphertext));
 
-        $this->assertSame($message, $plaintext);
+        self::assertSame($message, $plaintext);
 
         // raw binary ciphertext
         $message = $this->getMessage();
         $ciphertext = $key->encrypt($message)->getString(Encoding::RAW);
         $plaintext = $key->decrypt(Ciphertext::fromString($ciphertext, Encoding::RAW));
 
-        $this->assertSame($message, $plaintext);
+        self::assertSame($message, $plaintext);
     }
 
     /**
-     * test asymmetric authenticated encryption with two keypairs
+     * test asymmetric authenticated encryption with two keypair
      * @return void
+     * @throws EncodingException
+     * @throws InvalidArgumentException
+     * @throws KeyMismatchException
+     * @throws MacMismatchException
+     * @throws RuntimeException
+     * @throws SodiumException
+     * @throws UnexpectedValueException
+     * @throws Exception
      */
-    public function testAsymmetricCrypto()
+    public function testAsymmetricCrypto(): void
     {
-        $clientKey = (new KeyPair)->keygen();
-        $serverKey = (new KeyPair)->keygen();
+        $clientKey = KeyPair::generate();
+        $serverKey = KeyPair::generate();
 
         $clientCrypto = new Crypto($clientKey);
         $serverCrypto = new Crypto($serverKey);
@@ -61,42 +86,48 @@ class EncryptionTest extends TestCase
         $ciphertext = $clientCrypto->encrypt($message, $serverKey)->getString();
         $plaintext = $serverCrypto->decrypt(Ciphertext::fromString($ciphertext), $clientKey);
 
-        $this->assertSame($message, $plaintext);
+        self::assertSame($message, $plaintext);
 
         // response from server to client
         $message = $this->getMessage();
         $ciphertext = $serverCrypto->encrypt($message, $clientKey)->getString();
         $plaintext = $clientCrypto->decrypt(Ciphertext::fromString($ciphertext), $serverKey);
 
-        $this->assertSame($message, $plaintext);
+        self::assertSame($message, $plaintext);
 
         // request from client to server
         $message = $this->getMessage();
         $ciphertext = $clientCrypto->encrypt($message, $serverKey)->getString(Encoding::RAW);
         $plaintext = $serverCrypto->decrypt(Ciphertext::fromString($ciphertext, Encoding::RAW), $clientKey);
 
-        $this->assertSame($message, $plaintext);
+        self::assertSame($message, $plaintext);
 
         // response from server to client
         $message = $this->getMessage();
         $ciphertext = $serverCrypto->encrypt($message, $clientKey)->getString(Encoding::RAW);
         $plaintext = $clientCrypto->decrypt(Ciphertext::fromString($ciphertext, Encoding::RAW), $serverKey);
 
-        $this->assertSame($message, $plaintext);
+        self::assertSame($message, $plaintext);
     }
 
     /**
-     * test asymmetric authenticated encryption with two keypairs
+     * test asymmetric authenticated encryption with two keypair
      * and a third MITM Key attack
      * @return void
      *
-     * @expectedException ricwein\Crypto\Exceptions\MacMismatchException
+     * @throws EncodingException
+     * @throws InvalidArgumentException
+     * @throws KeyMismatchException
+     * @throws RuntimeException
+     * @throws SodiumException
+     * @throws UnexpectedValueException
+     * @throws Exception
      */
-    public function testMITMSend()
+    public function testMITMSend(): void
     {
-        $keyAlice = (new KeyPair)->keygen();
-        $keyBob = (new KeyPair)->keygen();
-        $keyEve = (new KeyPair)->keygen();
+        $keyAlice = KeyPair::generate();
+        $keyBob = KeyPair::generate();
+        $keyEve = KeyPair::generate();
 
         $cryptoAlice = new Crypto($keyAlice);
         $cryptoEve = new Crypto($keyEve);
@@ -105,23 +136,32 @@ class EncryptionTest extends TestCase
         // Eve (send message) => Alice (awaits) from Bob
         $message = $this->getMessage();
         $ciphertext = $cryptoEve->encrypt($message, $keyAlice->getKey(KeyPair::PUB_KEY))->getString();
+
+        $this->expectException(MacMismatchException::class);
+        $this->expectExceptionMessage('Invalid message authentication code');
         $plaintext = $cryptoAlice->decrypt(Ciphertext::fromString($ciphertext), $keyBob);
 
-        $this->assertNotSame($message, $plaintext);
+        self::assertNotSame($message, $plaintext);
     }
 
     /**
-     * test asymmetric authenticated encryption with two keypairs
+     * test asymmetric authenticated encryption with two keypair
      * and a third MITM Key attack
      * @return void
      *
-     * @expectedException ricwein\Crypto\Exceptions\MacMismatchException
+     * @throws EncodingException
+     * @throws InvalidArgumentException
+     * @throws KeyMismatchException
+     * @throws RuntimeException
+     * @throws SodiumException
+     * @throws UnexpectedValueException
+     * @throws Exception
      */
-    public function testMITMReceive()
+    public function testMITMReceive(): void
     {
-        $keyAlice = (new KeyPair)->keygen();
-        $keyBob = (new KeyPair)->keygen();
-        $keyEve = (new KeyPair)->keygen();
+        $keyAlice = KeyPair::generate();
+        $keyBob = KeyPair::generate();
+        $keyEve = KeyPair::generate();
 
         $cryptoAlice = new Crypto($keyAlice);
         $cryptoEve = new Crypto($keyEve);
@@ -130,18 +170,29 @@ class EncryptionTest extends TestCase
         // Alice (send message) => Bob, Eve intercepts
         $message = $this->getMessage();
         $ciphertext = $cryptoAlice->encrypt($message, $keyBob->getKey(KeyPair::PUB_KEY))->getString();
+
+        $this->expectException(MacMismatchException::class);
+        $this->expectExceptionMessage('Invalid message authentication code');
         $plaintext = $cryptoEve->decrypt(Ciphertext::fromString($ciphertext), $keyAlice);
 
-        $this->assertNotSame($message, $plaintext);
+        self::assertNotSame($message, $plaintext);
     }
 
     /**
-     * test asymmetric key exchange and priv-key => pub-key derivation
+     * test asymmetric key exchange and private-key => public-key derivation
      * @return void
+     * @throws EncodingException
+     * @throws InvalidArgumentException
+     * @throws KeyMismatchException
+     * @throws MacMismatchException
+     * @throws RuntimeException
+     * @throws SodiumException
+     * @throws UnexpectedValueException
+     * @throws Exception
      */
-    public function testPrivKeyExchange()
+    public function testPrivateKeyExchange(): void
     {
-        $keyA = (new KeyPair)->keygen();
+        $keyA = KeyPair::generate();
         $cryptoA = new Crypto($keyA);
 
         // encoded ciphertext
@@ -149,7 +200,7 @@ class EncryptionTest extends TestCase
         $ciphertext = $cryptoA->encrypt($message)->getString();
         $plaintext = $cryptoA->decrypt(Ciphertext::fromString($ciphertext));
 
-        $this->assertSame($message, $plaintext);
+        self::assertSame($message, $plaintext);
 
         $keyB = new KeyPair([
             KeyPair::PRIV_KEY => $keyA->getKey(KeyPair::PRIV_KEY),
@@ -158,6 +209,6 @@ class EncryptionTest extends TestCase
 
         $plaintext = $cryptoB->decrypt(Ciphertext::fromString($ciphertext));
 
-        $this->assertSame($message, $plaintext);
+        self::assertSame($message, $plaintext);
     }
 }

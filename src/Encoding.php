@@ -13,7 +13,7 @@ use function sodium_bin2hex;
 use function sodium_hex2bin;
 
 /**
- * provides timesafe en/decoding methods for sodium-crypto functions
+ * provides time-safe en/decoding methods for sodium-crypto functions
  */
 class Encoding
 {
@@ -46,18 +46,13 @@ class Encoding
      */
     public static function encode(string $message, string $encoding): string
     {
-        switch ($encoding) {
-            case self::RAW:
-                return $message;
-            case self::HEX:
-                return sodium_bin2hex($message);
-            case self::BASE64:
-                return Base64::encode($message);
-            case self::BASE64URLSAFE:
-                return Base64UrlSafe::encode($message);
-            default:
-                throw new EncodingException(sprintf('Unknown encoding: \'%s\'', $encoding), 500);
-        }
+        return match ($encoding) {
+            self::RAW => $message,
+            self::HEX => sodium_bin2hex($message),
+            self::BASE64 => Base64::encode($message),
+            self::BASE64URLSAFE => Base64UrlSafe::encode($message),
+            default => throw new EncodingException(sprintf('Unknown encoding: \'%s\'', $encoding), 500),
+        };
     }
 
     /**
@@ -69,18 +64,13 @@ class Encoding
      */
     public static function decode(string $message, string $encoding): string
     {
-        switch ($encoding) {
-            case self::RAW:
-                return $message;
-            case self::HEX:
-                return sodium_hex2bin($message);
-            case self::BASE64:
-                return Base64::decode($message);
-            case self::BASE64URLSAFE:
-                return Base64UrlSafe::decode($message);
-            default:
-                throw new EncodingException(sprintf('Unknown encoding: \'%s\'', $encoding), 500);
-        }
+        return match ($encoding) {
+            self::RAW => $message,
+            self::HEX => sodium_hex2bin($message),
+            self::BASE64 => Base64::decode($message),
+            self::BASE64URLSAFE => Base64UrlSafe::decode($message),
+            default => throw new EncodingException(sprintf('Unknown encoding: \'%s\'', $encoding), 500),
+        };
     }
 
     /**

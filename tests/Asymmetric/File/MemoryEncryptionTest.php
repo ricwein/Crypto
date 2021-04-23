@@ -1,14 +1,15 @@
 <?php declare(strict_types=1);
 
-namespace ricwein\Crypto\Tests\Symmetric\File;
+namespace ricwein\Crypto\Tests\Asymmetric\File;
 
 use Exception;
 use PHPUnit\Framework\TestCase;
+use ricwein\Crypto\Asymmetric\KeyPair;
+use ricwein\Crypto\Asymmetric\Crypto;
+use ricwein\Crypto\Exceptions\EncodingException;
 use ricwein\Crypto\Exceptions\InvalidArgumentException;
 use ricwein\Crypto\Exceptions\MacMismatchException;
 use ricwein\Crypto\Exceptions\UnexpectedValueException;
-use ricwein\Crypto\Symmetric\Key;
-use ricwein\Crypto\Symmetric\Crypto;
 use ricwein\FileSystem\Exceptions\AccessDeniedException as FileSystemAccessDeniedException;
 use ricwein\FileSystem\Exceptions\ConstraintsException as FileSystemConstraintsException;
 use ricwein\FileSystem\Exceptions\Exception as FileSystemException;
@@ -23,7 +24,7 @@ use SodiumException;
 /**
  * test symmetric message en/decryption
  */
-class DiskEncryptionTest extends TestCase
+class MemoryEncryptionTest extends TestCase
 {
     /**
      * @return File
@@ -35,7 +36,7 @@ class DiskEncryptionTest extends TestCase
     protected function getSourceFile(): File
     {
         $message = base64_encode(random_bytes(random_int(2 << 9, 2 << 10)));
-        $file = new File(new Storage\Disk\Temp);
+        $file = new File(new Storage\Memory);
         $file->write($message);
         return $file;
     }
@@ -46,6 +47,7 @@ class DiskEncryptionTest extends TestCase
      * @throws FileSystemConstraintsException
      * @throws FileSystemException
      * @throws SodiumException
+     * @throws EncodingException
      * @throws InvalidArgumentException
      * @throws MacMismatchException
      * @throws UnexpectedValueException
@@ -57,25 +59,26 @@ class DiskEncryptionTest extends TestCase
     public function testEncryption(): void
     {
         $sourceFile = $this->getSourceFile();
-        $destinationCipher = new Storage\Disk\Temp;
-        $destinationPlain = new Storage\Disk\Temp;
-        $key = Key::generate();
+        $destinationCipher = new Storage\Memory;
+        $destinationPlain = new Storage\Memory;
+
+        $keypairA = KeyPair::generate();
+        $keypairB = KeyPair::generate();
 
         // encrypt
-        $cipherFile = (new Crypto($key))->encryptFile($sourceFile, $destinationCipher);
+        $cipherFile = (new Crypto($keypairA))->encryptFile($sourceFile, $destinationCipher, $keypairB);
 
-        self::assertSame($destinationCipher->path()->real, $cipherFile->path()->real);
         self::assertNotSame($sourceFile->read(), $cipherFile->read());
 
         // decrypt
-        $plainFile = (new Crypto($key))->decryptFile($cipherFile, $destinationPlain);
+        $plainFile = (new Crypto($keypairB))->decryptFile($cipherFile, $destinationPlain, $keypairA);
 
-        self::assertSame($destinationPlain->path()->real, $plainFile->path()->real);
         self::assertSame($sourceFile->read(), $plainFile->read());
     }
 
     /**
      * @return void
+     * @throws EncodingException
      * @throws FileNotFoundException
      * @throws FileSystemAccessDeniedException
      * @throws FileSystemConstraintsException
@@ -91,21 +94,20 @@ class DiskEncryptionTest extends TestCase
     public function testSelfEncryption(): void
     {
         $sourceFile = $this->getSourceFile();
-        $key = Key::generate();
 
-        $comparePath = $sourceFile->path()->real;
-        $compareFile = $sourceFile->copyTo(new Storage\Disk\Temp);
+        $keypairA = KeyPair::generate();
+        $keypairB = KeyPair::generate();
+
+        $compareFile = $sourceFile->copyTo(new Storage\Memory);
 
         // encrypt
-        $cipherFile = (new Crypto($key))->encryptFile($sourceFile);
+        $cipherFile = (new Crypto($keypairA))->encryptFile($sourceFile, null, $keypairB);
 
-        self::assertSame($comparePath, $cipherFile->path()->real);
         self::assertNotSame($compareFile->read(), $cipherFile->read());
 
         // decrypt
-        $plainFile = (new Crypto($key))->decryptFile($cipherFile);
+        $plainFile = (new Crypto($keypairB))->decryptFile($cipherFile, null, $keypairA);
 
-        self::assertSame($comparePath, $plainFile->path()->real);
         self::assertSame($plainFile->read(), $compareFile->read());
     }
 }

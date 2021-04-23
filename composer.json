@@ -10,22 +10,22 @@
     }
   ],
   "require": {
-    "php": ">= 7.4.0",
+    "php": ">= 8.0",
     "ext-mbstring": "*",
     "ext-sodium": "*",
     "paragonie/constant_time_encoding": "^2"
   },
   "require-dev": {
-    "overtrue/phplint": "^1.1",
-    "phpunit/phpunit": "^7.1",
-    "ricwein/filesystem": "^2.1"
+    "overtrue/phplint": "^2.3",
+    "phpunit/phpunit": "^9.5",
+    "ricwein/filesystem": "^4.2"
   },
   "suggest": {
     "ricwein/filesystem": "Support for file-based cryptography"
   },
   "config": {
     "platform": {
-      "php": "7.4"
+      "php": "8.0"
     },
     "sort-packages": true
   },

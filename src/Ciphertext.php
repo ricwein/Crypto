@@ -109,12 +109,17 @@ class Ciphertext
 
     /**
      * @param string $message
-     * @return array  [description]
+     * @return array
      * @throws SodiumException
+     * @throws RuntimeException
      */
     private static function unpackMessageForDecryption(string $message): array
     {
         $length = mb_strlen($message, '8bit');
+
+        if ($length <= (SODIUM_CRYPTO_GENERICHASH_KEYBYTES + SODIUM_CRYPTO_STREAM_NONCEBYTES + SODIUM_CRYPTO_GENERICHASH_BYTES_MAX)) {
+            throw new RuntimeException('Invalid length for Ciphertext, is it encoded?', 400);
+        }
 
         // the salt is used for key splitting (via HKDF)
         $salt = mb_substr($message, 0, SODIUM_CRYPTO_GENERICHASH_KEYBYTES, '8bit');

@@ -1,65 +1,80 @@
-<?php declare(strict_types = 1);
+<?php declare(strict_types=1);
 
 namespace ricwein\Crypto\Tests\Asymmetric;
 
+use Exception;
 use PHPUnit\Framework\TestCase;
 use ricwein\Crypto\Asymmetric\KeyPair;
+use ricwein\Crypto\Exceptions\EncodingException;
+use ricwein\Crypto\Exceptions\InvalidArgumentException;
+use ricwein\Crypto\Exceptions\UnexpectedValueException;
+use SodiumException;
 
 /**
  * test keypair generation and usage
  */
-class AsymmetricKeyTest extends TestCase
+class KeyTest extends TestCase
 {
     /**
      * @return void
+     * @throws SodiumException
+     * @throws EncodingException
+     * @throws InvalidArgumentException
+     * @throws UnexpectedValueException
      */
-    public function testKeyGeneration()
+    public function testKeyGeneration(): void
     {
-        $keypair = new KeyPair;
-        $this->assertNull($keypair->getKey(KeyPair::PUB_KEY));
-        $this->assertNull($keypair->getKey(KeyPair::PRIV_KEY));
-
-        $keypair->keygen();
-        $this->assertSame(mb_strlen($keypair->getKey(KeyPair::PUB_KEY), '8bit'), \SODIUM_CRYPTO_BOX_SECRETKEYBYTES);
-        $this->assertSame(mb_strlen($keypair->getKey(KeyPair::PRIV_KEY), '8bit'), \SODIUM_CRYPTO_BOX_PUBLICKEYBYTES);
+        $keypair = KeyPair::generate();
+        self::assertSame(mb_strlen($keypair->getKey(KeyPair::PUB_KEY), '8bit'), SODIUM_CRYPTO_BOX_SECRETKEYBYTES);
+        self::assertSame(mb_strlen($keypair->getKey(KeyPair::PRIV_KEY), '8bit'), SODIUM_CRYPTO_BOX_PUBLICKEYBYTES);
     }
 
     /**
      * @return void
+     * @throws EncodingException
+     * @throws InvalidArgumentException
+     * @throws SodiumException
+     * @throws UnexpectedValueException
+     * @throws Exception
      */
-    public function testKeyDerivation()
+    public function testKeyDerivation(): void
     {
-        $keyAlice = (new KeyPair)->keygen();
-        $keyBob = (new KeyPair)->keygen();
+        $keyAlice = KeyPair::generate();
+        $keyBob = KeyPair::generate();
 
         $secretAlice = new KeyPair([KeyPair::PRIV_KEY => $keyAlice, KeyPair::PUB_KEY => $keyBob]);
         $secretBob = new KeyPair([KeyPair::PRIV_KEY => $keyBob, KeyPair::PUB_KEY => $keyAlice]);
 
-        $this->assertSame($secretAlice->getSharedSecret()->getKey(), $secretBob->getSharedSecret()->getKey());
+        self::assertSame($secretAlice->getSharedSecret()->getKey(), $secretBob->getSharedSecret()->getKey());
 
-        $salt = \random_bytes(\SODIUM_CRYPTO_PWHASH_SALTBYTES);
+        $salt = random_bytes(SODIUM_CRYPTO_PWHASH_SALTBYTES);
 
-        list($authAlice, $encAlice) = $secretAlice->hkdfSplit($salt);
-        list($authBob, $encBob) = $secretBob->hkdfSplit($salt);
+        [$authAlice, $encAlice] = $secretAlice->hkdfSplit($salt);
+        [$authBob, $encBob] = $secretBob->hkdfSplit($salt);
 
-        $this->assertSame($authAlice, $authBob);
-        $this->assertSame($encAlice, $encBob);
+        self::assertSame($authAlice, $authBob);
+        self::assertSame($encAlice, $encBob);
     }
 
     /**
      * test asymmetric key derivation from password/salt
      * @return void
+     * @throws EncodingException
+     * @throws InvalidArgumentException
+     * @throws SodiumException
+     * @throws UnexpectedValueException
+     * @throws Exception
      */
-    public function testKeyPasswortDerivation()
+    public function testKeyPasswortDerivation(): void
     {
-        $passwort = \random_bytes(random_int(2 << 9, 2 << 10));
-        $salt = \random_bytes(\SODIUM_CRYPTO_PWHASH_SALTBYTES);
+        $passwort = random_bytes(random_int(2 << 9, 2 << 10));
+        $salt = random_bytes(SODIUM_CRYPTO_PWHASH_SALTBYTES);
 
-        $keyA = (new KeyPair)->keygen($passwort, $salt);
-        $keyB = (new KeyPair)->keygen($passwort, $salt);
+        $keyA = KeyPair::generateFrom($passwort, $salt);
+        $keyB = KeyPair::generateFrom($passwort, $salt);
 
-        $this->assertSame($keyA->getKey(KeyPair::PUB_KEY), $keyB->getKey(KeyPair::PUB_KEY));
-        $this->assertSame($keyA->getKey(KeyPair::PRIV_KEY), $keyB->getKey(KeyPair::PRIV_KEY));
-        $this->assertSame($keyA->getSharedSecret()->getKey(), $keyB->getSharedSecret()->getKey());
+        self::assertSame($keyA->getKey(KeyPair::PUB_KEY), $keyB->getKey(KeyPair::PUB_KEY));
+        self::assertSame($keyA->getKey(KeyPair::PRIV_KEY), $keyB->getKey(KeyPair::PRIV_KEY));
+        self::assertSame($keyA->getSharedSecret()->getKey(), $keyB->getSharedSecret()->getKey());
     }
 }

@@ -1,12 +1,20 @@
-<?php declare(strict_types = 1);
+<?php declare(strict_types=1);
 
 namespace ricwein\Crypto\Tests\Symmetric;
 
+use Exception;
 use PHPUnit\Framework\TestCase;
 use ricwein\Crypto\Encoding;
 use ricwein\Crypto\Ciphertext;
+use ricwein\Crypto\Exceptions\EncodingException;
+use ricwein\Crypto\Exceptions\InvalidArgumentException;
+use ricwein\Crypto\Exceptions\KeyMismatchException;
+use ricwein\Crypto\Exceptions\MacMismatchException;
+use ricwein\Crypto\Exceptions\RuntimeException;
+use ricwein\Crypto\Exceptions\UnexpectedValueException;
 use ricwein\Crypto\Symmetric\Key;
 use ricwein\Crypto\Symmetric\Crypto;
+use SodiumException;
 
 /**
  * test symmetric message en/decryption
@@ -15,6 +23,7 @@ class EncryptionTest extends TestCase
 {
     /**
      * @return string
+     * @throws Exception
      */
     protected function getMessage(): string
     {
@@ -23,17 +32,25 @@ class EncryptionTest extends TestCase
 
     /**
      * @return void
+     * @throws SodiumException
+     * @throws EncodingException
+     * @throws InvalidArgumentException
+     * @throws KeyMismatchException
+     * @throws MacMismatchException
+     * @throws RuntimeException
+     * @throws UnexpectedValueException
+     * @throws Exception
      */
-    public function testEncryption()
+    public function testEncryption(): void
     {
         $message = $this->getMessage();
-        $key = (new Key)->keygen();
+        $key = Key::generate();
 
         // encrypt
         $ciphertext = (new Crypto($key))->encrypt($message)->getString(Encoding::RAW);
 
         // decrypt
         $plaintext = (new Crypto($key))->decrypt(Ciphertext::fromString($ciphertext, Encoding::RAW));
-        $this->assertSame($plaintext, $message);
+        self::assertSame($plaintext, $message);
     }
 }

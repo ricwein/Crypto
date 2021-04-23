@@ -28,35 +28,88 @@ use const SODIUM_CRYPTO_SECRETBOX_KEYBYTES;
  */
 class Key
 {
-
-    /**
-     * @var string
-     */
     private const CONTEXT_AUTH_KEY = 'AuthenticationKey';
-
-    /**
-     * @var string
-     */
     private const CONTEXT_ENC_KEY = 'EncryptionKey';
 
-    /**
-     * @var string|null
-     */
-    private ?string $key = null;
+    private string $key;
 
     /**
      * create new Sodium-Key
-     * @param string|null $key
+     * @param string $key
+     * @throws InvalidArgumentException
+     * @throws SodiumException
+     * @internal
+     */
+    public function __construct(string $key)
+    {
+        if (SODIUM_CRYPTO_SECRETBOX_KEYBYTES !== $isLength = mb_strlen($key, '8bit')) {
+            throw new InvalidArgumentException(sprintf('Secret-Key must be %d bytes long, but is %d bytes', SODIUM_CRYPTO_SECRETBOX_KEYBYTES, $isLength), 400);
+        }
+
+        // set public key
+        $this->key = $key;
+        sodium_memzero($key);
+    }
+
+    /**
+     * @throws InvalidArgumentException
+     * @throws SodiumException
+     */
+    public static function generate(): self
+    {
+        $key = sodium_crypto_secretbox_keygen();
+        return new self($key);
+    }
+
+    /**
+     * @param string $password
+     * @param string|null $salt
+     * @return static
+     * @throws InvalidArgumentException
+     * @throws SodiumException
+     * @throws Exception
+     */
+    public static function generateFrom(string $password, ?string $salt = null): self
+    {
+        if ($salt !== null && SODIUM_CRYPTO_PWHASH_SALTBYTES !== $isLength = mb_strlen($salt, '8bit')) {
+            throw new InvalidArgumentException(sprintf('Expected salt to be %d bytes long, but is %d bytes', SODIUM_CRYPTO_PWHASH_SALTBYTES, $isLength), 400);
+        }
+
+        if ($salt === null) {
+            $salt = random_bytes(SODIUM_CRYPTO_PWHASH_SALTBYTES);
+        }
+
+        /**
+         * Diffie Hellman key-derivation
+         * @var string
+         */
+        $key = @sodium_crypto_pwhash(
+            SODIUM_CRYPTO_SECRETBOX_KEYBYTES,
+            $password,
+            $salt,
+            SODIUM_CRYPTO_PWHASH_OPSLIMIT_INTERACTIVE,
+            SODIUM_CRYPTO_PWHASH_MEMLIMIT_INTERACTIVE,
+            SODIUM_CRYPTO_PWHASH_ALG_ARGON2ID13
+        );
+
+        sodium_memzero($password);
+        sodium_memzero($salt);
+
+        return new self($key);
+    }
+
+    /**
+     * @param Key|string $key
      * @param string $encoding
+     * @return static
      * @throws EncodingException
      * @throws InvalidArgumentException
      * @throws SodiumException
      */
-    public function __construct(?string $key = null, string $encoding = Encoding::RAW)
+    public static function load(self|string $key, string $encoding = Encoding::RAW): self
     {
-        if ($key !== null) {
-            $this->load($key, $encoding);
-        }
+        $keyData = is_string($key) ? Encoding::decode($key, $encoding) : $key->getKey();
+        return new self($keyData);
     }
 
     /**
@@ -71,91 +124,13 @@ class Key
     }
 
     /**
-     * create new symmetric key (secret)
-     * @param string|null $password
-     * @param string|null $salt
-     * @return self
-     * @throws InvalidArgumentException
-     * @throws Exception
-     */
-    public function keygen(?string $password = null, ?string $salt = null): self
-    {
-
-        // create actual secret (key)
-        if ($password !== null) {
-            if ($salt !== null && SODIUM_CRYPTO_PWHASH_SALTBYTES !== $isLength = mb_strlen($salt, '8bit')) {
-                throw new InvalidArgumentException(sprintf('Expected salt to be %d bytes long, but is %d bytes', SODIUM_CRYPTO_PWHASH_SALTBYTES, $isLength), 400);
-            }
-
-            if ($salt === null) {
-                $salt = random_bytes(SODIUM_CRYPTO_PWHASH_SALTBYTES);
-            }
-
-            /**
-             * Diffie Hellman key-derivation
-             * @var string
-             */
-            $key = @sodium_crypto_pwhash(
-                SODIUM_CRYPTO_SECRETBOX_KEYBYTES,
-                $password,
-                $salt,
-                SODIUM_CRYPTO_PWHASH_OPSLIMIT_INTERACTIVE,
-                SODIUM_CRYPTO_PWHASH_MEMLIMIT_INTERACTIVE,
-                SODIUM_CRYPTO_PWHASH_ALG_ARGON2ID13
-            );
-
-            sodium_memzero($password);
-            sodium_memzero($salt);
-        } else {
-
-            // secret-key
-            $key = sodium_crypto_secretbox_keygen();
-        }
-
-        // extract private-key from keypair
-        $this->key = $key;
-
-        // Let's wipe our $keyPair variable
-        sodium_memzero($key);
-
-        return $this;
-    }
-
-    /**
-     * @param string $key
      * @param string $encoding
-     * @return self
-     * @throws EncodingException
-     * @throws InvalidArgumentException
-     * @throws SodiumException
-     */
-    public function load(string $key, string $encoding = Encoding::RAW): self
-    {
-        $key = Encoding::decode($key, $encoding);
-
-        if (SODIUM_CRYPTO_SECRETBOX_KEYBYTES !== $isLength = mb_strlen($key, '8bit')) {
-            throw new InvalidArgumentException(sprintf('Secret-Key must be %d bytes long, but is %d bytes', SODIUM_CRYPTO_SECRETBOX_KEYBYTES, $isLength), 400);
-        }
-
-        // set public key
-        $this->key = $key;
-        sodium_memzero($key);
-
-        return $this;
-    }
-
-    /**
-     * @param string $encoding
-     * @return string|null
+     * @return string
      * @throws EncodingException
      * @throws SodiumException
      */
-    public function getKey(string $encoding = Encoding::RAW): ?string
+    public function getKey(string $encoding = Encoding::RAW): string
     {
-        if ($this->key === null) {
-            return null;
-        }
-
         $key = Helper::safeStrcpy($this->key);
         return Encoding::encode($key, $encoding);
     }
