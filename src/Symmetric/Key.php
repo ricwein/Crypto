@@ -6,11 +6,13 @@
 namespace ricwein\Crypto\Symmetric;
 
 use Exception;
+use ricwein\Crypto\Asymmetric\KeyPair;
 use ricwein\Crypto\Encoding;
 use ricwein\Crypto\Exceptions\EncodingException;
 use ricwein\Crypto\Helper;
 use ricwein\Crypto\Exceptions\InvalidArgumentException;
 use ricwein\Crypto\Exceptions\UnexpectedValueException;
+use ricwein\Crypto\Key as KeyBase;
 use SodiumException;
 use function random_bytes;
 use function sodium_crypto_pwhash;
@@ -26,7 +28,7 @@ use const SODIUM_CRYPTO_SECRETBOX_KEYBYTES;
 /**
  * Symmetric Sodium-Key (Secret)
  */
-class Key
+class Key extends KeyBase
 {
     private const CONTEXT_AUTH_KEY = 'AuthenticationKey';
     private const CONTEXT_ENC_KEY = 'EncryptionKey';
@@ -35,7 +37,6 @@ class Key
 
     /**
      * create new Sodium-Key
-     * @param string $key
      * @throws InvalidArgumentException
      * @throws SodiumException
      * @internal
@@ -62,9 +63,6 @@ class Key
     }
 
     /**
-     * @param string $password
-     * @param string|null $salt
-     * @return static
      * @throws InvalidArgumentException
      * @throws SodiumException
      * @throws Exception
@@ -99,9 +97,6 @@ class Key
     }
 
     /**
-     * @param Key|string $key
-     * @param string $encoding
-     * @return static
      * @throws EncodingException
      * @throws InvalidArgumentException
      * @throws SodiumException
@@ -124,8 +119,6 @@ class Key
     }
 
     /**
-     * @param string $encoding
-     * @return string
      * @throws EncodingException
      * @throws SodiumException
      */
@@ -137,16 +130,15 @@ class Key
 
     /**
      * use Blake2b HKDF to derive separated encryption and authentication keys from derived shared-secret
-     * @param string|null $salt
-     * @return array
      * @throws InvalidArgumentException
      * @throws UnexpectedValueException
      * @throws SodiumException
+     * @internal
      */
     public function hkdfSplit(?string $salt = null): array
     {
         if ($this->key === null) {
-            throw new UnexpectedValueException('deriving subkeys via HKDF requires a secret to be set, but none given', 500);
+            throw new UnexpectedValueException('Deriving sub-keys via HKDF requires a secret to be set, but none given.', 500);
         }
 
         $encKey = Helper::hkdfBlake2b($this->key, SODIUM_CRYPTO_SECRETBOX_KEYBYTES, self::CONTEXT_ENC_KEY, $salt);
@@ -156,10 +148,19 @@ class Key
     }
 
     /**
+     * use key as asymmetric keypair private key, derive public key dynamically
+     * @throws EncodingException
+     * @throws InvalidArgumentException
+     * @throws SodiumException
+     * @throws UnexpectedValueException
+     */
+    public function asKeypair(): KeyPair
+    {
+        return (new KeyPair([KeyPair::PRIV_KEY => $this->key]));
+    }
+
+    /**
      * calculate (hash-based) key fingerprint
-     * @param string $encoding
-     * @param string $algo
-     * @return string|null
      * @throws EncodingException
      * @throws SodiumException
      */
@@ -171,5 +172,13 @@ class Key
 
         $fingerprint = hash($algo, $this->key, true);
         return Encoding::encode($fingerprint, $encoding);
+    }
+
+    public function __debugInfo(): array
+    {
+        return [
+            'type' => 'symmetric key',
+            'length' => mb_strlen($this->key, '8bit'),
+        ];
     }
 }

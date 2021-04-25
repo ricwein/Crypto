@@ -17,30 +17,12 @@ use function sodium_hex2bin;
  */
 class Encoding
 {
-    /**
-     * @var string
-     */
     public const RAW = 'raw';
-
-    /**
-     * @var string
-     */
     public const HEX = 'hex';
-
-    /**
-     * @var string
-     */
     public const BASE64 = 'base64';
-
-    /**
-     * @var string
-     */
     public const BASE64URLSAFE = 'base64urlsafe';
 
     /**
-     * @param string $message
-     * @param string $encoding
-     * @return string
      * @throws EncodingException
      * @throws SodiumException
      */
@@ -56,9 +38,6 @@ class Encoding
     }
 
     /**
-     * @param string $message
-     * @param string $encoding
-     * @return string
      * @throws EncodingException
      * @throws SodiumException
      */
@@ -74,10 +53,6 @@ class Encoding
     }
 
     /**
-     * @param string $message
-     * @param string $fromEncoding
-     * @param string $toEncoding
-     * @return string
      * @throws EncodingException
      * @throws SodiumException
      */

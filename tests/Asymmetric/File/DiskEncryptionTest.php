@@ -9,6 +9,7 @@ use ricwein\Crypto\Asymmetric\Crypto;
 use ricwein\Crypto\Exceptions\EncodingException;
 use ricwein\Crypto\Exceptions\InvalidArgumentException;
 use ricwein\Crypto\Exceptions\MacMismatchException;
+use ricwein\Crypto\Exceptions\RuntimeException;
 use ricwein\Crypto\Exceptions\UnexpectedValueException;
 use ricwein\FileSystem\Exceptions\AccessDeniedException as FileSystemAccessDeniedException;
 use ricwein\FileSystem\Exceptions\ConstraintsException as FileSystemConstraintsException;
@@ -43,18 +44,19 @@ class DiskEncryptionTest extends TestCase
 
     /**
      * @return void
+     * @throws EncodingException
+     * @throws FileNotFoundException
      * @throws FileSystemAccessDeniedException
      * @throws FileSystemConstraintsException
      * @throws FileSystemException
-     * @throws SodiumException
-     * @throws EncodingException
-     * @throws InvalidArgumentException
-     * @throws MacMismatchException
-     * @throws UnexpectedValueException
-     * @throws FileNotFoundException
      * @throws FileSystemRuntimeException
      * @throws FileSystemUnexpectedValueException
      * @throws FileSystemUnsupportedException
+     * @throws InvalidArgumentException
+     * @throws MacMismatchException
+     * @throws RuntimeException
+     * @throws SodiumException
+     * @throws UnexpectedValueException
      */
     public function testEncryption(): void
     {
@@ -90,6 +92,7 @@ class DiskEncryptionTest extends TestCase
      * @throws FileSystemUnsupportedException
      * @throws InvalidArgumentException
      * @throws MacMismatchException
+     * @throws RuntimeException
      * @throws SodiumException
      * @throws UnexpectedValueException
      */
@@ -114,5 +117,91 @@ class DiskEncryptionTest extends TestCase
 
         self::assertSame($comparePath, $plainFile->path()->real);
         self::assertSame($plainFile->read(), $compareFile->read());
+    }
+
+    /**
+     * @throws EncodingException
+     * @throws FileNotFoundException
+     * @throws FileSystemAccessDeniedException
+     * @throws FileSystemConstraintsException
+     * @throws FileSystemException
+     * @throws FileSystemRuntimeException
+     * @throws FileSystemUnexpectedValueException
+     * @throws FileSystemUnsupportedException
+     * @throws InvalidArgumentException
+     * @throws MacMismatchException
+     * @throws SodiumException
+     * @throws UnexpectedValueException
+     */
+    public function testSelfSealing(): void
+    {
+        $sourceFile = $this->getSourceFile();
+        $keypair = KeyPair::generate();
+
+        $compareFile = $sourceFile->copyTo(new Storage\Disk\Temp);
+
+        // encrypt
+        $cipherFile = (new Crypto($keypair->copyWithExclusive(KeyPair::PUB_KEY)))->sealFile($sourceFile);
+        self::assertNotSame($compareFile->read(), $cipherFile->read());
+
+        // decrypt
+        $plainFile = (new Crypto($keypair->copyWithExclusive(KeyPair::PRIV_KEY)))->unsealFile($cipherFile);
+        self::assertSame($plainFile->read(), $compareFile->read());
+    }
+
+    /**
+     * @throws EncodingException
+     * @throws FileNotFoundException
+     * @throws FileSystemAccessDeniedException
+     * @throws FileSystemConstraintsException
+     * @throws FileSystemException
+     * @throws FileSystemRuntimeException
+     * @throws FileSystemUnexpectedValueException
+     * @throws FileSystemUnsupportedException
+     * @throws InvalidArgumentException
+     * @throws MacMismatchException
+     * @throws SodiumException
+     * @throws UnexpectedValueException
+     * @throws Exception
+     */
+    public function testMemoryFileSealing(): void
+    {
+        $message = base64_encode(random_bytes(random_int(2 << 9, 2 << 10)));
+        $sourceFile = new File(new Storage\Memory($message));
+        $keypair = KeyPair::generate();
+
+        $compareFile = $sourceFile->copyTo(new Storage\Memory);
+
+        // encrypt
+        $cipherFile = (new Crypto($keypair->copyWithExclusive(KeyPair::PUB_KEY)))->sealFile($sourceFile);
+        self::assertNotSame($compareFile->read(), $cipherFile->read());
+
+        // decrypt
+        $plainFile = (new Crypto($keypair->copyWithExclusive(KeyPair::PRIV_KEY)))->unsealFile($cipherFile);
+        self::assertSame($plainFile->read(), $compareFile->read());
+    }
+
+    /**
+     * @throws EncodingException
+     * @throws FileNotFoundException
+     * @throws FileSystemAccessDeniedException
+     * @throws FileSystemConstraintsException
+     * @throws FileSystemException
+     * @throws FileSystemRuntimeException
+     * @throws FileSystemUnexpectedValueException
+     * @throws FileSystemUnsupportedException
+     * @throws InvalidArgumentException
+     * @throws MacMismatchException
+     * @throws SodiumException
+     * @throws UnexpectedValueException
+     */
+    public function testEmptyDecrypt(): void
+    {
+        $cipherFile = new File(new Storage\Memory);
+        $crypto = new Crypto(KeyPair::generate());
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageMatches('/Input file is too small\. Expected at least.+/');
+        $crypto->decryptFile($cipherFile);
     }
 }

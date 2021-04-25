@@ -19,42 +19,13 @@ use const SODIUM_CRYPTO_STREAM_NONCEBYTES;
  */
 class Ciphertext
 {
-
-    /**
-     * @var string
-     */
     protected string $encrypted;
-
-    /**
-     * @var string
-     */
     protected string $salt;
-
-    /**
-     * @var string
-     */
     protected string $nonce;
-
-    /**
-     * @var string|null
-     */
     protected ?string $authKey = null;
-
-    /**
-     * @var string|null
-     */
     protected ?string $mac = null;
-
-    /**
-     * @var string
-     */
     protected string $cipher = 'unknown';
 
-    /**
-     * @param string $encrypted
-     * @param string $salt
-     * @param string $nonce
-     */
     public function __construct(string $encrypted, string $salt, string $nonce)
     {
         $this->encrypted = $encrypted;
@@ -83,9 +54,6 @@ class Ciphertext
     }
 
     /**
-     * @param string $ciphertext
-     * @param string $encoding
-     * @return self
      * @throws Exceptions\EncodingException
      * @throws RuntimeException
      * @throws SodiumException
@@ -108,8 +76,6 @@ class Ciphertext
     }
 
     /**
-     * @param string $message
-     * @return array
      * @throws SodiumException
      * @throws RuntimeException
      */
@@ -147,8 +113,6 @@ class Ciphertext
 
     /**
      * get ciphertext as string, including mac
-     * @param string $encoding
-     * @return string
      * @throws Exceptions\EncodingException
      * @throws SodiumException
      * @throws UnexpectedValueException
@@ -161,7 +125,6 @@ class Ciphertext
     }
 
     /**
-     * @return string
      * @throws Exceptions\EncodingException
      * @throws SodiumException
      * @throws UnexpectedValueException
@@ -171,28 +134,17 @@ class Ciphertext
         return $this->getString();
     }
 
-    /**
-     * @param string $cipher
-     * @return self
-     */
     public function setCipher(string $cipher): self
     {
         $this->cipher = $cipher;
         return $this;
     }
 
-    /**
-     * @return string
-     */
     public function getCipher(): string
     {
         return $this->cipher;
     }
 
-    /**
-     * @param string $mac
-     * @return self
-     */
     public function setMac(string $mac): self
     {
         $this->mac = $mac;
@@ -200,8 +152,6 @@ class Ciphertext
     }
 
     /**
-     * @param string $encoding
-     * @return string
      * @throws Exceptions\EncodingException
      * @throws UnexpectedValueException
      * @throws SodiumException
@@ -218,8 +168,6 @@ class Ciphertext
     }
 
     /**
-     * @param string|null $mac
-     * @return bool
      * @throws Exceptions\EncodingException
      * @throws SodiumException
      * @throws UnexpectedValueException
@@ -230,7 +178,6 @@ class Ciphertext
     }
 
     /**
-     * @return string raw-binary
      * @throws SodiumException
      * @throws UnexpectedValueException
      */
@@ -243,35 +190,22 @@ class Ciphertext
         return sodium_crypto_generichash($this->salt . $this->nonce . $this->encrypted, $this->authKey, SODIUM_CRYPTO_GENERICHASH_BYTES_MAX);
     }
 
-    /**
-     * @param string $authKey
-     * @return self
-     */
     public function setAuthKey(string $authKey): self
     {
         $this->authKey = $authKey;
         return $this;
     }
 
-    /**
-     * @return string
-     */
     public function getSalt(): string
     {
         return $this->salt;
     }
 
-    /**
-     * @return string
-     */
     public function getNonce(): string
     {
         return $this->nonce;
     }
 
-    /**
-     * @return string
-     */
     public function getEncrypted(): string
     {
         return $this->encrypted;

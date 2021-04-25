@@ -5,6 +5,7 @@ namespace ricwein\Crypto\Tests\Asymmetric;
 use Exception;
 use PHPUnit\Framework\TestCase;
 use ricwein\Crypto\Asymmetric\KeyPair;
+use ricwein\Crypto\Exceptions\CannotAccessHiddenException;
 use ricwein\Crypto\Exceptions\EncodingException;
 use ricwein\Crypto\Exceptions\InvalidArgumentException;
 use ricwein\Crypto\Exceptions\UnexpectedValueException;
@@ -27,6 +28,45 @@ class KeyTest extends TestCase
         $keypair = KeyPair::generate();
         self::assertSame(mb_strlen($keypair->getKey(KeyPair::PUB_KEY), '8bit'), SODIUM_CRYPTO_BOX_SECRETKEYBYTES);
         self::assertSame(mb_strlen($keypair->getKey(KeyPair::PRIV_KEY), '8bit'), SODIUM_CRYPTO_BOX_PUBLICKEYBYTES);
+    }
+
+    /**
+     * @throws EncodingException
+     * @throws InvalidArgumentException
+     * @throws SodiumException
+     * @throws UnexpectedValueException
+     */
+    public function testHiddenKey(): void
+    {
+        $keypair = KeyPair::generate();
+        $this->expectOutputString('');
+        echo $keypair;
+    }
+
+    /**
+     * @throws EncodingException
+     * @throws InvalidArgumentException
+     * @throws SodiumException
+     * @throws UnexpectedValueException
+     */
+    public function testCloneKey(): void
+    {
+        $keypair = KeyPair::generate();
+        $this->expectException(CannotAccessHiddenException::class);
+        $_ = clone $keypair;
+    }
+
+    /**
+     * @throws EncodingException
+     * @throws InvalidArgumentException
+     * @throws SodiumException
+     * @throws UnexpectedValueException
+     */
+    public function testSerializeKey(): void
+    {
+        $keypair = KeyPair::generate();
+        $this->expectException(CannotAccessHiddenException::class);
+        $_ = serialize($keypair);
     }
 
     /**

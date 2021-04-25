@@ -24,9 +24,6 @@ final class Helper
     /**
      * PHP 7 uses interned strings.
      * We don't want to alter the original string.
-     *
-     * @param string|null $string
-     * @return string|null
      */
     public static function safeStrcpy(?string $string = null): ?string
     {
@@ -51,8 +48,6 @@ final class Helper
      * @param string $ikm Initial Keying Material
      * @param int $length How many bytes?
      * @param string $info What sort of key are we deriving?
-     * @param string|null $salt
-     * @return string
      * @throws UnexpectedValueException|InvalidArgumentException
      * @throws SodiumException
      */

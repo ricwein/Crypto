@@ -5,6 +5,7 @@ namespace ricwein\Crypto\Tests\Symmetric;
 use Exception;
 use PHPUnit\Framework\TestCase;
 use ricwein\Crypto\Encoding;
+use ricwein\Crypto\Exceptions\CannotAccessHiddenException;
 use ricwein\Crypto\Exceptions\EncodingException;
 use ricwein\Crypto\Exceptions\InvalidArgumentException;
 use ricwein\Crypto\Exceptions\UnexpectedValueException;
@@ -26,6 +27,40 @@ class KeyTest extends TestCase
     {
         $key = Key::generate();
         self::assertSame(mb_strlen($key->getKey(), '8bit'), SODIUM_CRYPTO_SECRETBOX_KEYBYTES);
+    }
+
+
+    /**
+     * @throws InvalidArgumentException
+     * @throws SodiumException
+     */
+    public function testHiddenKey(): void
+    {
+        $keypair = Key::generate();
+        $this->expectOutputString('');
+        echo $keypair;
+    }
+
+    /**
+     * @throws InvalidArgumentException
+     * @throws SodiumException
+     */
+    public function testCloneKey(): void
+    {
+        $keypair = Key::generate();
+        $this->expectException(CannotAccessHiddenException::class);
+        $_ = clone $keypair;
+    }
+
+    /**
+     * @throws InvalidArgumentException
+     * @throws SodiumException
+     */
+    public function testSerializeKey(): void
+    {
+        $keypair = Key::generate();
+        $this->expectException(CannotAccessHiddenException::class);
+        $_ = serialize($keypair);
     }
 
     /**

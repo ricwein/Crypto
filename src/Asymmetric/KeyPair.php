@@ -9,9 +9,10 @@ use Exception;
 use ricwein\Crypto\Encoding;
 use ricwein\Crypto\Exceptions\EncodingException;
 use ricwein\Crypto\Helper;
-use ricwein\Crypto\Symmetric\Key;
 use ricwein\Crypto\Exceptions\InvalidArgumentException;
 use ricwein\Crypto\Exceptions\UnexpectedValueException;
+use ricwein\Crypto\Key as KeyBase;
+use ricwein\Crypto\Symmetric\Key;
 use SodiumException;
 use function random_bytes;
 use function sodium_crypto_box_keypair;
@@ -34,7 +35,7 @@ use const SODIUM_CRYPTO_PWHASH_SALTBYTES;
 /**
  * Asymmetric Sodium-KeyPair
  */
-class KeyPair
+class KeyPair extends KeyBase
 {
     public const PUB_KEY = 'publickey';
     public const PRIV_KEY = 'privatekey';
@@ -49,7 +50,7 @@ class KeyPair
 
     /**
      * create new Sodium-KeyPair (X25519)
-     * @param array<string, string|self|Key> $keys
+     * @param array<string, string|self|KeyBase> $keys
      * @throws EncodingException
      * @throws InvalidArgumentException
      * @throws SodiumException
@@ -59,6 +60,10 @@ class KeyPair
     public function __construct(array $keys, string $encoding = Encoding::RAW)
     {
         foreach ($keys as $type => $key) {
+            if (!is_string($key) && !$key instanceof KeyBase) {
+                throw new InvalidArgumentException(sprintf("Invalid datatype (%s) for %s-key.", get_debug_type($key), $type), 500);
+            }
+
             if (in_array($type, [self::PUB_KEY, 'publicKey', 'public', 'pubKey'], true)) {
 
                 $this->loadPublicKey($key, $encoding);
@@ -70,7 +75,7 @@ class KeyPair
                 unset($keys[$type]);
 
             } else {
-                throw new InvalidArgumentException(sprintf('invalid key-type \'%s\'', $type), 500);
+                throw new InvalidArgumentException("Invalid key-type: $type", 500);
             }
         }
 
@@ -184,7 +189,7 @@ class KeyPair
         // fetch/decoded key
         if ($key instanceof self) {
             $keyData = $key->getKey(self::PUB_KEY);
-        } elseif ($key instanceof Key) {
+        } elseif ($key instanceof KeyBase) {
             $keyData = $key->getKey();
         } else {
             $keyData = Encoding::decode($key, $encoding);
@@ -211,7 +216,7 @@ class KeyPair
         // fetch/decoded key
         if ($key instanceof self) {
             $keyData = $key->getKey(self::PRIV_KEY);
-        } elseif ($key instanceof Key) {
+        } elseif ($key instanceof KeyBase) {
             $keyData = $key->getKey();
         } else {
             $keyData = Encoding::decode($key, $encoding);
@@ -229,14 +234,13 @@ class KeyPair
     }
 
     /**
-     * @return self
      * @throws SodiumException
      * @throws UnexpectedValueException
      */
     public function derivePublicKey(): self
     {
         if ($this->keypair[self::PRIV_KEY] === null) {
-            throw new UnexpectedValueException('deriving a public key requires a private key to be set, but none given', 500);
+            throw new UnexpectedValueException('Trying to derive a public key for this keypair failed. Missing or invalid private Key.', 500);
         }
 
         $this->keypair[self::PUB_KEY] = sodium_crypto_box_publickey_from_secretkey($this->keypair[self::PRIV_KEY]);
@@ -244,9 +248,6 @@ class KeyPair
     }
 
     /**
-     * @param string $type
-     * @param string $encoding
-     * @return string|null
      * @throws InvalidArgumentException
      * @throws EncodingException
      * @throws SodiumException
@@ -258,25 +259,18 @@ class KeyPair
             return $key !== null ? Encoding::encode($key, $encoding) : null;
         }
 
-        throw new InvalidArgumentException(sprintf('unknown key-type \'%s\'', $type), 400);
+        throw new InvalidArgumentException("Unknown key for type '$type'.", 400);
     }
 
     /**
      * Get a Sodium box keypair
-     * @param string $encoding
-     * @return string|null
      * @throws EncodingException
      * @throws SodiumException
-     * @throws UnexpectedValueException
      */
     public function getKeyPair(string $encoding = Encoding::RAW): ?string
     {
         if ($this->keypair[self::PRIV_KEY] === null) {
             return null;
-        }
-
-        if ($this->keypair[self::PUB_KEY] === null) {
-            $this->derivePublicKey();
         }
 
         $keyPair = sodium_crypto_box_keypair_from_secretkey_and_publickey($this->keypair[self::PRIV_KEY], $this->keypair[self::PUB_KEY]);
@@ -285,7 +279,6 @@ class KeyPair
 
     /**
      * Elliptical Curve (Curve25519) Diffie-Hellman X25519
-     * @return Key
      * @throws InvalidArgumentException
      * @throws SodiumException
      * @throws UnexpectedValueException
@@ -294,10 +287,6 @@ class KeyPair
     {
         if ($this->keypair[self::PRIV_KEY] === null) {
             throw new UnexpectedValueException('deriving a shared secret requires a valid keypair, but none given', 500);
-        }
-
-        if ($this->keypair[self::PUB_KEY] === null) {
-            $this->derivePublicKey();
         }
 
         $secret = sodium_crypto_scalarmult($this->keypair[self::PRIV_KEY], $this->keypair[self::PUB_KEY]);
@@ -310,8 +299,6 @@ class KeyPair
 
     /**
      * use Blake2b HKDF to derive separated encryption and authentication keys from derived shared-secret
-     * @param string|null $salt
-     * @return array
      * @throws InvalidArgumentException
      * @throws SodiumException
      * @throws UnexpectedValueException
@@ -321,5 +308,27 @@ class KeyPair
         $sharedSecret = $this->getSharedSecret();
 
         return $sharedSecret->hkdfSplit($salt);
+    }
+
+    public function __debugInfo(): array
+    {
+        return [
+            'type' => 'asymmetric keypair',
+            'length' => [
+                'public' => (null !== $pubKey = $this->keypair[self::PUB_KEY]) ? mb_strlen($pubKey, '8bit') : null,
+                'private' => (null !== $privKey = $this->keypair[self::PRIV_KEY]) ? mb_strlen($privKey, '8bit') : null,
+            ]
+        ];
+    }
+
+    /**
+     * @throws EncodingException
+     * @throws InvalidArgumentException
+     * @throws SodiumException
+     * @throws UnexpectedValueException
+     */
+    public function copyWithExclusive(string $keyType): static
+    {
+        return new static([$keyType => $this->getKey($keyType)]);
     }
 }
