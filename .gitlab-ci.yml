@@ -1,5 +1,13 @@
 before_script:
-  - composer install
+  #  - eval $(ssh-agent -s)
+  #  - ssh-add <(echo "$SSH_PRIVATE_KEY")
+
+  # Install composer dependencies
+  - wget https://composer.github.io/installer.sig -O - -q | tr -d '\n' > installer.sig
+  - php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+  - php -r "if (hash_file('SHA384', 'composer-setup.php') === file_get_contents('installer.sig')) { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;"
+  - php composer-setup.php
+  - php -r "unlink('composer-setup.php'); unlink('installer.sig');"
 
 cache:
   paths:
@@ -7,11 +15,13 @@ cache:
 
 # jobs
 Linting:
-  stage: build
+  stage: test
   script:
+    - php composer.phar install --no-progress --no-interaction
     - vendor/bin/phplint
 
 Unit Testing:
   stage: test
   script:
+    - php composer.phar install --no-progress --no-interaction
     - vendor/bin/phpunit
