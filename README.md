@@ -147,7 +147,7 @@ composer require ricwein/filesystem
 
 The usage is the same as the sym/asymmetric en/decryption methods, but instead of encrypting strings into ciphertexts-objects, a File will be encrypted, returning a new File-Object.
 
-Most times it's useful to encrypt a file and replace it's plaintext with the new ciphertext. It should be noted, that this library creates a temp-file in this case, encrypts the sourcefile into the new temp-file, and replaces the source
+Most times it's useful to encrypt a file and replace its plaintext with the new ciphertext. It should be noted, that this library creates a temp-file in this case, encrypts the sourcefile into the new temp-file, and replaces the source
 afterwards with the temp-file.
 
 All file-crypto methods support custom destination storages, which can be provided as the last parameter in `encryptFile()` and `decryptFile()`. If a storage is given, the previously described encryption through a temp-file is skipped.

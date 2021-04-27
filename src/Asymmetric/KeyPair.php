@@ -60,6 +60,10 @@ class KeyPair extends KeyBase
     public function __construct(array $keys, string $encoding = Encoding::RAW)
     {
         foreach ($keys as $type => $key) {
+            if ($key === null) {
+                continue;
+            }
+
             if (!is_string($key) && !$key instanceof KeyBase) {
                 throw new InvalidArgumentException(sprintf("Invalid datatype (%s) for %s-key.", get_debug_type($key), $type), 500);
             }
@@ -240,7 +244,7 @@ class KeyPair extends KeyBase
     public function derivePublicKey(): self
     {
         if ($this->keypair[self::PRIV_KEY] === null) {
-            throw new UnexpectedValueException('Trying to derive a public key for this keypair failed. Missing or invalid private Key.', 500);
+            throw new UnexpectedValueException('Missing or invalid private Key.', 500);
         }
 
         $this->keypair[self::PUB_KEY] = sodium_crypto_box_publickey_from_secretkey($this->keypair[self::PRIV_KEY]);
